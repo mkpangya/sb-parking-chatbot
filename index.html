@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>주차 안내 챗봇</title>
+<style>
+  @import url("https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.min.css");
+  /* 라이트 모드 전용 팔레트 */
+  :root {
+    --brand: #1E3A8A;      /* 네이비: 헤더 아바타, 사용자 말풍선 */
+    --accent: #2563EB;     /* 블루: 버튼, 강조 */
+    --brand-soft: #EAF1FF;
+    --bg: #F4F6FA;
+    --card: #FFFFFF;
+    --fg: #111827;
+    --muted: #6B7280;
+    --line: #E5E7EB;
+    --warn-bg: #FFF8E6;
+    --warn-fg: #8A5A00;
+    --user-bg: #1E3A8A;
+    --user-fg: #FFFFFF;
+    --shadow-sm: 0 1px 2px rgba(17, 24, 39, .06);
+    --shadow-md: 0 4px 14px rgba(17, 24, 39, .08);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: #E9EDF4; color: var(--fg);
+    font-family: Pretendard, "Malgun Gothic", "맑은 고딕", -apple-system, system-ui, sans-serif;
+    font-size: 14px; line-height: 1.6; font-weight: 500; letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased; display: flex; justify-content: center; align-items: flex-start; padding: 12px 0;
+  }
+  /* 레이어 크기: 가로 420px, 세로 540px */
+  .app {
+    width: 420px; height: 720px; background: var(--bg); border-radius: 16px; overflow: hidden;
+    display: flex; flex-direction: column; border: 1px solid var(--line); box-shadow: var(--shadow-md);
+  }
+
+  /* 상단 바 (흰색 + 하단 구분선) */
+  .top {
+    background: var(--card); padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .top .avatar {
+    width: 36px; height: 36px; border-radius: 50%; background: var(--brand);
+    display: grid; place-items: center; flex: none;
+  }
+  .top .title { flex: 1; min-width: 0; }
+  .top .title strong { display: block; font-size: 15px; font-weight: 700; line-height: 1.3; letter-spacing: -0.02em; color: var(--fg); }
+  .top .title span { display: block; font-size: 11px; font-weight: 400; color: var(--muted); white-space: nowrap; line-height: 1.3; }
+  .top button {
+    background: var(--brand-soft); color: var(--accent); border: none; border-radius: 999px;
+    padding: 5px 10px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .top button:focus-visible, .cat:focus-visible, .composer button:focus-visible, .composer input:focus-visible,
+  .mitem:focus-visible, .mback:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* 배지 (신뢰 표시) */
+  .badges { display: flex; gap: 6px; padding: 8px 12px 0; background: var(--bg); }
+  .badge {
+    font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 999px; background: var(--card);
+    color: var(--brand); border: 1px solid var(--line); white-space: nowrap;
+  }
+
+  /* 대화 영역 */
+  .log {
+    flex: 1; min-height: 0; overflow-y: auto; padding: 12px 12px 8px; display: flex; flex-direction: column;
+    gap: 10px; background: var(--bg);
+  }
+  .brow { display: flex; gap: 8px; align-items: flex-start; align-self: flex-start; max-width: 94%; }
+  .brow .av {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--brand); flex: none;
+    display: grid; place-items: center;
+  }
+  .msg {
+    padding: 9px 12px; border-radius: 14px; font-size: 14px; line-height: 1.6; font-weight: 500;
+    white-space: pre-line; word-break: keep-all; overflow-wrap: anywhere; max-width: 100%;
+  }
+  .msg.bot { background: var(--card); color: var(--fg); border-top-left-radius: 4px; box-shadow: var(--shadow-sm); }
+  .msg.user {
+    align-self: flex-end; background: var(--user-bg); color: var(--user-fg);
+    border-top-right-radius: 4px; max-width: 80%;
+  }
+  .msg .qtitle { font-weight: 700; margin-bottom: 4px; font-size: 14px; letter-spacing: -0.02em; }
+  .msg .meta { font-size: 11px; color: var(--muted); margin-top: 6px; font-weight: 400; }
+  .msg hr { border: none; border-top: 1px solid var(--line); margin: 8px 0; }
+
+  .disc-wrap { overflow-x: auto; margin-top: 6px; }
+  .disc { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .disc th, .disc td { border: 1px solid var(--line); padding: 5px 6px; text-align: left; vertical-align: top; }
+  .disc th { background: var(--brand-soft); color: var(--brand); font-weight: 700; }
+  .disc td.rate { white-space: nowrap; font-weight: 700; }
+  .disc tr.note td { background: var(--warn-bg); color: var(--warn-fg); }
+
+  .msg .contact {
+    margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: var(--bg);
+    border: 1px solid var(--line); font-size: 12px; font-weight: 500;
+  }
+
+  /* 빠른 메뉴 (2x2 카드) */
+  .cats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px 12px 10px; background: var(--bg); }
+  .cat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px; cursor: pointer;
+    font: inherit; color: var(--fg); display: flex; align-items: center; gap: 8px; text-align: left;
+    box-shadow: var(--shadow-sm); transition: border-color .15s, box-shadow .15s;
+  }
+  .cat:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+  .cat .ico {
+    width: 30px; height: 30px; border-radius: 9px; background: var(--brand-soft);
+    display: grid; place-items: center; color: var(--accent); flex: none;
+  }
+  .cat .txt { min-width: 0; }
+  .cat .label { display: block; font-weight: 700; font-size: 13px; line-height: 1.3; letter-spacing: -0.02em; white-space: nowrap; }
+  .cat .sub { display: block; font-size: 11px; font-weight: 400; color: var(--muted); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* 메뉴 질문 목록 카드 */
+  .mcard { border-radius: 12px; padding: 10px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+  .mcard .mtitle { font-weight: 700; margin: 0 0 4px; font-size: 14px; letter-spacing: -0.02em; }
+  .mitem {
+    width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 6px;
+    text-align: left; font: inherit; font-size: 13px; font-weight: 500; color: var(--fg); background: var(--bg);
+    border: 1px solid transparent; border-radius: 10px; padding: 8px 10px; margin-top: 6px; cursor: pointer;
+  }
+  .mitem:hover { border-color: var(--accent); background: var(--brand-soft); }
+  .mitem::after { content: "›"; color: var(--accent); font-size: 16px; line-height: 1; }
+  .mback {
+    margin-top: 6px; background: none; border: none; color: var(--accent); font: inherit;
+    font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 0;
+  }
+
+  /* 입력 영역 */
+  .composer { display: flex; gap: 8px; padding: 8px 12px; background: var(--card); align-items: center; border-top: 1px solid var(--line); }
+  .composer input {
+    flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 8px 14px;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--fg);
+  }
+  .composer input::placeholder { color: var(--muted); }
+  .composer input:focus { border-color: var(--accent); outline: none; background: var(--card); }
+  .composer button {
+    width: 36px; height: 36px; border: none; border-radius: 50%; cursor: pointer;
+    background: var(--accent); color: #fff; display: grid; place-items: center; flex: none;
+  }
+  .composer button:hover { background: var(--brand); }
+
+  /* 하단 안내 (한 줄, 캡션 크기) */
+  .notice {
+    font-size: 11px; font-weight: 500; letter-spacing: -0.03em; color: var(--warn-fg); background: var(--warn-bg);
+    padding: 5px 8px; text-align: center; white-space: nowrap; border-top: 1px solid #F6E3B4;
+  }
+  /* 카카오맵 버튼 */
+  .mapbox { margin-top: 8px; padding: 8px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); }
+  .mapbox .mtitle { font-size: 12px; font-weight: 700; margin: 0 0 6px; color: var(--brand); }
+  .mapgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .mapbtn {
+    display: block; text-decoration: none; color: var(--fg); background: var(--card); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 600; line-height: 1.3; min-width: 0;
+  }
+  .mapbtn small { display: block; font-size: 10px; font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mapbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .mapbox .mnote { font-size: 10px; color: var(--muted); margin-top: 6px; }
+  .foot { background: var(--card); padding: 8px 12px 10px; border-top: 1px solid var(--line); display: grid; gap: 4px; }
+  .foot .cline { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .foot .cname { font-size: 12px; font-weight: 600; color: var(--fg); }
+  .foot .tel {
+    font-size: 15px; font-weight: 800; color: var(--accent); text-decoration: none; letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .foot .tel:hover { text-decoration: underline; }
+  .foot .chours { font-size: 11px; color: var(--muted); }
+  .foot .ftitle { font-size: 12px; font-weight: 700; color: var(--brand); }
+
+  @media (max-width: 480px) {
+    body { padding: 0; }
+    .app { width: 100%; height: 100vh; border-radius: 0; border: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="avatar" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-7-10a7 7 0 0 1 14 0c0 5.6-7 10-7 10z"/><circle cx="12" cy="11" r="2.5"/></svg>
+    </div>
+    <div class="title">
+      <strong>주차 안내 AI 챗봇</strong>
+      <span>성북구도시관리공단 주차사업팀</span>
+    </div>
+    <button type="button" id="reset">처음으로</button>
+  </header>
+
+  <div class="badges">
+    <span class="badge">✓ 공식 자료 기반 답변</span>
+    <span class="badge">🔒 개인정보 입력 금지</span>
+  </div>
+
+  <main id="result" class="log" aria-live="polite"></main>
+
+  <nav id="cats" class="cats" aria-label="빠른 메뉴"></nav>
+
+  <form id="ask" class="composer" autocomplete="off">
+    <input type="text" id="q" placeholder="무엇을 도와드릴까요? (예: 장애인 할인)" maxlength="100" aria-label="질문 입력">
+    <button type="submit" aria-label="질문 보내기">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>
+    </button>
+  </form>
+
+  <div class="notice">AI 안내는 실수가 있을 수 있습니다. 중요한 내용은 꼭 다시 한번 확인하세요.</div>
+  <div id="foot" class="foot" aria-label="문의처"></div>
+</div>
+
+<script src="vendor/sql-wasm.js"></script>
+<script>
+(function () {
+  "use strict";
+  // 브라우저가 옛 데이터를 저장해 두지 않도록 매번 새 주소로 불러온다
+  // 공개용 SQLite 파일(data/chatbot.db)을 브라우저에서 직접 읽는다 (sql.js 사용)
+  var DB_URL = "data/chatbot.db?t=" + Date.now();
+  var data = null;
+  var log = document.getElementById("result");
+
+  // 검색에서 제외할 공통어
+  var STOP = ["주차", "주차장", "공영주차장", "어떻게", "얼마", "얼마나", "있나요", "인가요", "되나요", "하나요", "방법", "어디"];
+
+  function norm(s) { return String(s || "").toLowerCase().replace(/\s+/g, ""); }
+
+  function search(query) {
+    var q = norm(query);
+    var scores = {};
+
+    // 1) 동의어: 질문에 포함된 표현이 있으면 연결된 FAQ에 가산
+    var synHit = {};
+    Object.keys(data.synonyms).forEach(function (kw) {
+      if (q.indexOf(norm(kw)) !== -1) {
+        data.synonyms[kw].forEach(function (id) { synHit[id] = true; });
+      }
+    });
+    Object.keys(synHit).forEach(function (id) { scores[id] = 4; });
+
+    // 2) 토큰: 질문 제목에 있으면 3점, 답변에만 있으면 1점
+    var tokens = query.split(/\s+/).map(norm)
+      .filter(function (t) { return t.length >= 2 && STOP.indexOf(t) === -1; });
+    data.faqs.forEach(function (f) {
+      var qText = norm(f.question), aText = norm(f.answer);
+      tokens.forEach(function (t) {
+        if (qText.indexOf(t) !== -1) { scores[f.id] = (scores[f.id] || 0) + 3; }
+        else if (aText.indexOf(t) !== -1) { scores[f.id] = (scores[f.id] || 0) + 1; }
+      });
+    });
+
+    // 3) 3점 미만은 관련성이 낮다고 보고 답하지 않음
+    return data.faqs
+      .filter(function (f) { return (scores[f.id] || 0) >= 3; })
+      .sort(function (a, b) { return scores[b.id] - scores[a.id]; })
+      .slice(0, 3);
+  }
+
+  function el(tag, text, cls) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+
+  var BOT_AV = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-7-10a7 7 0 0 1 14 0c0 5.6-7 10-7 10z"/><circle cx="12" cy="11" r="2.5"/></svg>';
+
+  function addMessage(cls, build) {
+    var msg = el("div", undefined, "msg " + cls);
+    build(msg);
+    if (cls === "bot") {
+      var row = el("div", undefined, "brow");
+      var av = el("div", undefined, "av");
+      av.innerHTML = BOT_AV;
+      row.appendChild(av);
+      row.appendChild(msg);
+      log.appendChild(row);
+    } else {
+      log.appendChild(msg);
+    }
+    log.scrollTop = log.scrollHeight;
+    return msg;
+  }
+
+  function contactBox(parent) {
+    var box = el("div", undefined, "contact");
+    box.appendChild(el("div", "담당 부서에 문의해 주세요."));
+    data.contacts.forEach(function (c) {
+      box.appendChild(el("div", c.name + " " + c.phone + " (" + c.hours + ")"));
+    });
+    parent.appendChild(box);
+  }
+
+  // 할인·감면 전체 표 (faq.json의 discounts 사용)
+  function showDiscounts() {
+    addMessage("user", function (msg) { msg.textContent = "할인·감면 전체 보기"; });
+    addMessage("bot", function (msg) {
+      var list = (data.discounts || []);
+      if (list.length === 0) {
+        msg.textContent = "감면 정보를 불러오지 못했습니다. 주차사업팀에 문의해 주세요.";
+        contactBox(msg);
+        return;
+      }
+      msg.appendChild(el("div", "할인·감면 전체 안내", "qtitle"));
+      var wrap = el("div", undefined, "disc-wrap");
+      var table = el("table", undefined, "disc");
+      var thead = el("thead");
+      var hr = el("tr");
+      ["할인 유형", "할인율", "확인 방법"].forEach(function (h) { hr.appendChild(el("th", h)); });
+      thead.appendChild(hr);
+      table.appendChild(thead);
+      var tbody = el("tbody");
+      list.forEach(function (d) {
+        var isNote = d.type.indexOf("※") === 0;
+        var tr = el("tr", undefined, isNote ? "note" : "");
+        if (isNote) {
+          var td = el("td", d.type + (d.proof ? " : " + d.proof : ""));
+          td.colSpan = 3;
+          tr.appendChild(td);
+        } else {
+          tr.appendChild(el("td", d.type));
+          tr.appendChild(el("td", d.rate, "rate"));
+          tr.appendChild(el("td", d.proof));
+        }
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      wrap.appendChild(table);
+      msg.appendChild(wrap);
+      msg.appendChild(el("div", "근거: 공단 현황자료(2026.09) 감면자격 현황 / 기준: 2026.09", "meta"));
+    });
+  }
+
+  // 메뉴 아이콘 (faq.json의 menus.icon 값과 연결)
+  var ICONS = {
+    parking: '<path d="M3 17h18M5 17V11l3-4h8l3 4v6"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/>',
+    home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>',
+    discount: '<path d="M4 12h10l-3-3m3 3-3 3"/><circle cx="18" cy="6" r="2"/>',
+    tow: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>'
+  };
+
+  function svgIcon(key) {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("width", "18"); svg.setAttribute("height", "18");
+    svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor"); svg.setAttribute("stroke-width", "2");
+    svg.innerHTML = ICONS[key] || ICONS.parking;
+    return svg;
+  }
+
+  function renderMenus() {
+    var nav = document.getElementById("cats");
+    nav.textContent = "";
+    (data.menus || []).forEach(function (m) {
+      var btn = el("button", undefined, "cat");
+      btn.type = "button";
+      btn.setAttribute("data-menu-id", m.id);
+      var ico = el("span", undefined, "ico");
+      ico.appendChild(svgIcon(m.icon));
+      btn.appendChild(ico);
+      var txt = el("span", undefined, "txt");
+      txt.appendChild(el("span", m.label, "label"));
+      txt.appendChild(el("span", m.sub, "sub"));
+      btn.appendChild(txt);
+      btn.addEventListener("click", function () { openMenu(m); });
+      nav.appendChild(btn);
+    });
+  }
+
+  function openMenu(m) {
+    if (m.action === "discount_table") { showDiscounts(); return; }
+    addMessage("user", function (msg) { msg.textContent = m.label; });
+    addMessage("bot", function (msg) {
+      var card = el("div", undefined, "mcard");
+      card.appendChild(el("div", m.label, "mtitle"));
+      if (m.items.length === 0) {
+        card.appendChild(el("div", "준비 중인 안내입니다. 주차사업팀에 문의해 주세요."));
+        contactBox(card);
+      }
+      m.items.forEach(function (it) {
+        var b = el("button", it.question, "mitem");
+        b.type = "button";
+        b.addEventListener("click", function () { showFaq(it.id); });
+        card.appendChild(b);
+      });
+      var back = el("button", "↑ 상위메뉴", "mback");
+      back.type = "button";
+      back.addEventListener("click", reset);
+      card.appendChild(back);
+      msg.appendChild(card);
+    });
+  }
+
+  function findFaq(id) {
+    for (var i = 0; i < data.faqs.length; i++) { if (data.faqs[i].id === id) return data.faqs[i]; }
+    return null;
+  }
+
+  // 카카오맵 검색 링크 (공개된 주차장 주소만 검색어로 사용)
+  function mapBox(parent, places) {
+    if (!places || places.length === 0) return;
+    var box = el("div", undefined, "mapbox");
+    box.appendChild(el("div", "📍 지도에서 위치 보기", "mtitle"));
+    var grid = el("div", undefined, "mapgrid");
+    places.forEach(function (p) {
+      var a = el("a", undefined, "mapbtn");
+      var clean = String(p.address || "").split("(")[0].trim();
+      a.href = "https://map.kakao.com/?q=" + encodeURIComponent("서울 성북구 " + clean);
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.appendChild(document.createTextNode(p.name));
+      a.appendChild(el("small", clean));
+      grid.appendChild(a);
+    });
+    box.appendChild(grid);
+    box.appendChild(el("div", "카카오맵(외부 사이트)으로 이동합니다.", "mnote"));
+    parent.appendChild(box);
+  }
+
+  function showFaq(id) {
+    var f = findFaq(id);
+    if (!f) return;
+    addMessage("user", function (msg) { msg.textContent = f.question; });
+    addMessage("bot", function (msg) {
+      msg.appendChild(el("div", f.question, "qtitle"));
+      msg.appendChild(el("div", f.answer));
+      mapBox(msg, f.places);
+      msg.appendChild(el("div", "근거: " + f.source + " · 기준: " + f.as_of, "meta"));
+      if (f.status === "문의") { contactBox(msg); }
+    });
+  }
+
+  function botAnswer(query) {
+    var hits = search(query);
+    addMessage("bot", function (msg) {
+      if (hits.length === 0) {
+        msg.textContent = "해당 내용은 자료에서 명확히 확인되지 않아 정확한 안내가 어렵습니다.";
+        contactBox(msg);
+        return;
+      }
+      hits.forEach(function (f, i) {
+        if (i > 0) { msg.appendChild(el("hr")); }
+        msg.appendChild(el("div", f.question, "qtitle"));
+        msg.appendChild(el("div", f.answer));
+        mapBox(msg, f.places);
+        msg.appendChild(el("div", "근거: " + f.source + " · 기준: " + f.as_of, "meta"));
+        if (f.status === "문의") { contactBox(msg); }
+      });
+    });
+  }
+
+  function ask(query) {
+    var q = String(query || "").trim();
+    if (!q || !data) return;
+    addMessage("user", function (msg) { msg.textContent = q; });
+    botAnswer(q);
+  }
+
+  function greet(text) {
+    addMessage("bot", function (msg) { msg.textContent = text; });
+  }
+
+  // 처음 화면에 바로 보이는 기본 FAQ 3개 (faq.json 게시 항목 중 ID로 지정)
+  var HOME_FAQ_IDS = ["F-051", "F-006", "F-070"];
+
+  function homeFaqs() {
+    addMessage("bot", function (msg) {
+      var card = el("div", undefined, "mcard");
+      card.appendChild(el("div", "자주 찾는 질문", "mtitle"));
+      HOME_FAQ_IDS.forEach(function (id) {
+        var f = findFaq(id);
+        if (!f) return;
+        var b = el("button", f.question, "mitem");
+        b.type = "button";
+        b.addEventListener("click", function () { showFaq(id); });
+        card.appendChild(b);
+      });
+      msg.appendChild(card);
+    });
+  }
+
+  function renderFoot() {
+    var foot = document.getElementById("foot");
+    foot.textContent = "";
+    foot.appendChild(el("div", "문의 전화 (평일 09:00~18:00)", "ftitle"));
+    (data.contacts || []).forEach(function (c) {
+      var row = el("div", undefined, "cline");
+      row.appendChild(el("span", c.name + "센터", "cname"));
+      var a = el("a", c.phone, "tel");
+      a.href = "tel:" + c.phone.replace(/[^0-9]/g, "");
+      row.appendChild(a);
+      foot.appendChild(row);
+    });
+  }
+
+  function reset() {
+    log.textContent = "";
+    greet("안녕하세요. 성북구도시관리공단 주차 안내 AI 챗봇입니다.\n자주 찾는 질문이나 메뉴를 선택해 주세요.");
+    homeFaqs();
+    renderMenus();
+    renderFoot();
+  }
+
+  document.getElementById("ask").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var input = document.getElementById("q");
+    ask(input.value);
+    input.value = "";
+  });
+
+  document.getElementById("reset").addEventListener("click", reset);
+
+  greet("안내 데이터를 불러오는 중입니다...");
+  // 행 배열로 바꾸는 도우미: SQL 결과를 {열이름: 값} 객체 목록으로 만든다
+  function rowsOf(db, sql) {
+    var res = db.exec(sql);
+    if (!res.length) return [];
+    var cols = res[0].columns;
+    return res[0].values.map(function (v) {
+      var o = {};
+      cols.forEach(function (c, i) { o[c] = v[i]; });
+      return o;
+    });
+  }
+
+  // DB 테이블을 챗봇이 쓰는 data 구조로 조립한다
+  function buildData(db) {
+    var faqs = rowsOf(db, "SELECT faq_id AS id, center, category, question, answer, source, as_of, status FROM faq ORDER BY faq_id");
+    var byId = {};
+    faqs.forEach(function (f) { f.places = []; byId[f.id] = f; });
+    rowsOf(db, "SELECT faq_id, name, address, lot_type FROM faq_place ORDER BY faq_id, pos").forEach(function (p) {
+      if (byId[p.faq_id]) byId[p.faq_id].places.push({ name: p.name, address: p.address, lot_type: p.lot_type });
+    });
+
+    var synonyms = {};
+    rowsOf(db, "SELECT keyword, faq_id FROM faq_synonym ORDER BY keyword, faq_id").forEach(function (s) {
+      (synonyms[s.keyword] = synonyms[s.keyword] || []).push(s.faq_id);
+    });
+
+    var contacts = rowsOf(db, "SELECT name, phone, hours, purpose FROM contact ORDER BY pos");
+    var centers = rowsOf(db, "SELECT name, phone, hours, scope FROM center ORDER BY pos");
+    var discounts = rowsOf(db, "SELECT type, rate, proof FROM discount ORDER BY pos");
+
+    var menus = rowsOf(db, "SELECT menu_id AS id, label, sub, icon, action FROM menu ORDER BY pos");
+    var items = rowsOf(db, "SELECT mi.menu_id, mi.faq_id AS id, f.question FROM menu_item mi JOIN faq f ON f.faq_id = mi.faq_id ORDER BY mi.menu_id, mi.pos");
+    menus.forEach(function (m) {
+      m.items = items.filter(function (i) { return i.menu_id === m.id; })
+                     .map(function (i) { return { id: i.id, question: i.question }; });
+    });
+
+    return { faqs: faqs, synonyms: synonyms, contacts: contacts, centers: centers, discounts: discounts, menus: menus };
+  }
+
+  function loadDb() {
+    return initSqlJs({ locateFile: function (f) { return "vendor/" + f; } }).then(function (SQL) {
+      return fetch(DB_URL)
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.arrayBuffer(); })
+        .then(function (buf) { return new SQL.Database(new Uint8Array(buf)); });
+    });
+  }
+
+  loadDb()
+    .then(function (db) { data = buildData(db); reset(); })
+    .catch(function () {
+      log.textContent = "";
+      greet("안내 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    });
+})();
+</script>
+</body>
+</html>
