@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>AI 쳇봇 관리자 (시험용)</title>
+<style>
+:root{--ink:#111827;--mut:#6B7280;--line:#E5E7EB;--bg:#F5F7FB;--pri:#2563EB;--warn:#92400E;--warnbg:#FEF3C7;--err:#B91C1C;--errbg:#FEE2E2;--ok:#065F46;--okbg:#D1FAE5}
+*{box-sizing:border-box}
+body{margin:0;font-family:Pretendard,"Malgun Gothic",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+header{background:#1E3A8A;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:16px;margin:0;flex:1}
+header a{color:#fff;font-size:13px}
+.badge{background:rgba(255,255,255,.18);padding:4px 10px;border-radius:999px;font-size:12px}
+nav{background:#fff;border-bottom:1px solid var(--line);display:flex;gap:4px;padding:0 12px;overflow-x:auto}
+nav button{border:0;background:none;padding:12px;font:inherit;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+nav button.on{color:var(--pri);border-bottom-color:var(--pri);font-weight:700}
+main{padding:20px;max-width:1200px;margin:0 auto}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.card h2{font-size:16px;margin:0 0 10px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px}
+.stat b{display:block;font-size:22px}
+.stat span{color:var(--mut);font-size:12px}
+table{width:100%;border-collapse:collapse;background:#fff}
+th,td{border-bottom:1px solid var(--line);padding:7px;text-align:left;vertical-align:top}
+th{background:#F9FAFB;font-size:12px;color:var(--mut)}
+td input,td select{font-size:13px;padding:5px 6px}
+tr.click{cursor:pointer}
+tr.click:hover{background:#F0F6FF}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+input,select,textarea{font:inherit;padding:7px 9px;border:1px solid #D1D5DB;border-radius:6px;background:#fff;color:var(--ink)}
+textarea{width:100%;min-height:70px}
+.w{width:100%}
+label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+.btn{background:#fff;border:1px solid #D1D5DB;border-radius:6px;padding:7px 12px;cursor:pointer;font:inherit}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.d{color:var(--err)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:#EEF2FF;color:#3730A3;white-space:nowrap}
+.tag.n{background:#F3F4F6;color:#6B7280}
+.tag.w{background:var(--warnbg);color:var(--warn)}
+.msg{padding:10px 12px;border-radius:8px;margin:8px 0;font-size:13px;white-space:pre-line}
+.msg.err{background:var(--errbg);color:var(--err)}
+.msg.warn{background:var(--warnbg);color:var(--warn)}
+.msg.ok{background:var(--okbg);color:var(--ok)}
+.hide{display:none!important}
+.login{max-width:480px;margin:50px auto}
+.muted{color:var(--mut);font-size:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.steps li{margin-bottom:6px}
+.scroll{overflow-x:auto}
+@media (max-width:700px){.two{grid-template-columns:1fr}main{padding:12px}}
+</style>
+</head>
+<body>
+
+<!-- 1. 로그인(계정 선택) 화면 -->
+<div id="login" class="card login">
+  <h2>AI 쳇봇 관리자 화면</h2>
+  <div class="msg warn">시험용 화면입니다. 지금은 <b>계정을 골라 들어가는 방식</b>이라 실제 접근 통제가 아닙니다.
+실제 운영 전에 서버 로그인 또는 GitHub 저장소 권한으로 반드시 바꿔야 합니다.</div>
+  <label>계정 선택</label>
+  <select id="acc" class="w"></select>
+  <div class="row" style="margin-top:12px"><button class="btn p" onclick="login()">들어가기</button></div>
+  <div id="dbmsg"></div>
+  <label>작업 DB 불러오기 (내부에 보관한 chatbot_work.db)</label>
+  <input type="file" accept=".db" onchange="loadFile(this.files[0])">
+  <div class="muted">공개용 data/chatbot.db는 자동으로 읽습니다. 작업 중이던 파일이 있으면 여기서 불러오세요.</div>
+</div>
+
+<!-- 2. 관리자 본 화면 (별도 화면) -->
+<div id="app" class="hide">
+<header>
+  <h1>AI 쳇봇 관리자 <span style="opacity:.7;font-weight:400">(시험용)</span></h1>
+  <span class="badge" id="who"></span>
+  <a href="../index.html">챗봇 화면 보기</a>
+  <button class="btn" onclick="logout()" style="font-size:12px">나가기</button>
+</header>
+<nav>
+  <button data-v="dash" onclick="show('dash')">대시보드</button>
+  <button data-v="faq" onclick="show('faq')">FAQ 관리</button>
+  <button data-v="disc" onclick="show('disc')">할인·감면</button>
+  <button data-v="contact" class="superonly" onclick="show('contact')">센터·문의처</button>
+  <button data-v="acc" class="superonly" onclick="show('acc')">관리자 권한</button>
+  <button data-v="out" onclick="show('out')">내보내기·이력</button>
+</nav>
+
+<main>
+  <!-- 대시보드 -->
+  <section id="v-dash"><div id="dash"></div></section>
+
+  <!-- FAQ 관리 -->
+  <section id="v-faq" class="hide">
+    <div class="card">
+      <div class="row">
+        <input id="fq" placeholder="질문·답변 검색" oninput="renderFaqList()">
+        <select id="fc" onchange="renderFaqList()"></select>
+        <select id="fs" onchange="renderFaqList()">
+          <option value="">상태 전체</option><option>확정</option><option>조건부</option><option>문의</option>
+        </select>
+        <select id="fp" onchange="renderFaqList()">
+          <option value="">게시 전체</option><option value="Y">게시(Y)</option><option value="N">비공개(N)</option>
+        </select>
+        <span class="muted" id="fcount"></span>
+        <button class="btn p" style="margin-left:auto" onclick="openFaq('NEW')">+ 새 FAQ 등록</button>
+      </div>
+      <div id="list_msg"></div>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>번호</th><th>센터</th><th>분류</th><th>질문</th><th>상태</th><th>게시</th><th></th></tr></thead>
+        <tbody id="ftb" onclick="pickFaq(event)"></tbody>
+      </table>
+      </div>
+      <div class="muted" style="margin-top:8px">행을 누르면 수정 화면이 열립니다. 삭제 대신 게시 여부를 N으로 바꾸면 챗봇에서 숨겨집니다.</div>
+    </div>
+
+    <div id="fe" class="card hide">
+      <h2 id="fe_title"></h2>
+      <div id="fe_ro" class="msg warn hide">조회만 가능합니다. (다른 센터의 FAQ는 해당 센터 담당자 또는 최고관리자가 수정합니다.)</div>
+      <div class="two">
+        <div><label>FAQ 번호 (F-###)</label><input id="e_id" class="w"></div>
+        <div><label>센터 구분</label><select id="e_center" class="w"></select></div>
+        <div><label>분류</label><select id="e_cat" class="w"></select></div>
+        <div><label>상태</label><select id="e_status" class="w"></select></div>
+        <div><label>게시 여부 (Y = 챗봇에 공개)</label>
+          <select id="e_pub" class="w"><option value="Y">Y · 게시</option><option value="N">N · 비공개</option></select></div>
+        <div><label>기준시점 (예: 2026.09)</label><input id="e_asof" class="w"></div>
+      </div>
+      <label>질문</label><input id="e_q" class="w">
+      <label>답변 (줄바꿈 가능)</label><textarea id="e_a" style="min-height:160px"></textarea>
+      <label>근거 (예: 성북구 주차장 설치 및 관리 조례 제○조, 공단 현황자료)</label><input id="e_src" class="w">
+      <div class="two">
+        <div><label>동의어(검색 연결) — 쉼표 또는 줄바꿈으로 구분</label><textarea id="e_syn"></textarea></div>
+        <div><label>관련 주차장 — 한 줄에 「이름 | 주소 | 노상·노외·부설」</label><textarea id="e_pl"></textarea></div>
+      </div>
+      <div id="e_msg"></div>
+      <div class="row">
+        <button class="btn p" id="e_save" onclick="saveFaq()">저장</button>
+        <button class="btn" onclick="closeFaq()">닫기</button>
+      </div>
+      <div class="muted">저장은 작업 DB에 반영됩니다. 챗봇 공개는 '내보내기·이력' 탭에서 공개용 DB를 받아 저장소에 올려야 완료됩니다.</div>
+    </div>
+  </section>
+
+  <!-- 할인·감면 -->
+  <section id="v-disc" class="hide">
+    <div class="card">
+      <h2>할인·감면 유형</h2>
+      <div class="muted">담당: 공영주차센터 (최고관리자 포함). 표를 고친 뒤 '저장'을 누르면 표 전체가 새로 기록됩니다.</div>
+      <div id="t_discount"></div>
+    </div>
+  </section>
+
+  <!-- 센터·문의처 -->
+  <section id="v-contact" class="hide">
+    <div class="card">
+      <h2>사업장(센터) 정보</h2>
+      <div class="muted">최고관리자만 수정합니다. 챗봇 하단 문의전화에 표시됩니다. 연락처가 없으면 저장되지 않습니다. (공통은 비워 둠)</div>
+      <div id="t_center"></div>
+    </div>
+    <div class="card">
+      <h2>문의처</h2>
+      <div class="muted">최고관리자만 수정합니다.</div>
+      <div id="t_contact"></div>
+    </div>
+  </section>
+
+  <!-- 관리자 권한 -->
+  <section id="v-acc" class="hide">
+    <div class="card">
+      <h2>사업장 관리자 · 권한 관리</h2>
+      <div class="msg warn">계정 정보는 사람의 이름·연락처를 포함할 수 있는 개인정보입니다. 이 화면에서 내려받는 계정 파일은 <b>저장소에 올리지 말고 내부 보관</b>하세요. 지금 목록은 예시입니다.</div>
+      <div class="muted">권한 규칙: 최고관리자는 전체 FAQ·센터·문의처·계정을 관리합니다. 사업장 관리자는 자기 센터 FAQ와(공영주차센터인 경우) 할인·감면만 편집합니다.</div>
+      <div class="scroll"><table>
+        <thead><tr><th>표시 이름(직책)</th><th>역할</th><th>담당 센터</th><th>사용</th><th></th></tr></thead>
+        <tbody id="atb"></tbody>
+      </table></div>
+      <div class="row">
+        <button class="btn" onclick="addAcc()">+ 계정 추가</button>
+        <button class="btn p" onclick="saveAcc()">권한 저장</button>
+        <button class="btn" onclick="exportAcc()">계정 파일 받기 (내부 보관)</button>
+        <label class="btn" style="margin:0">계정 파일 불러오기<input type="file" accept=".json" onchange="importAcc(this.files[0])" style="display:none"></label>
+      </div>
+      <div id="acc_msg"></div>
+    </div>
+  </section>
+
+  <!-- 내보내기·이력 -->
+  <section id="v-out" class="hide">
+    <div class="card">
+      <h2>작업 흐름</h2>
+      <ol class="steps">
+        <li>사업장 관리자가 FAQ·할인 정보를 수정하고 <b>'작업용 DB 받기'</b>로 저장합니다. (내부 보관)</li>
+        <li>최고관리자가 해당 파일을 <b>'작업 DB 불러오기'</b>로 열어 내용을 검토합니다.</li>
+        <li>최고관리자가 <b>'공개용 DB 받기'</b>를 누르면 게시(Y) 내용만 들어간 chatbot.db가 내려받아집니다.</li>
+        <li>받은 chatbot.db를 저장소의 <code>data</code> 폴더에 덮어쓰고 GitHub Desktop에서 Commit → Push 합니다. 1~2분 뒤 챗봇에 반영됩니다.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2>파일 받기</h2>
+      <div class="row">
+        <button class="btn" onclick="downloadWork()">작업용 DB 받기 (chatbot_work.db · 내부 보관)</button>
+        <button class="btn p superonly" onclick="downloadPublic()">공개용 DB 받기 (chatbot.db · 저장소용)</button>
+      </div>
+      <div id="out_msg"></div>
+      <div class="muted" id="out_stat"></div>
+      <label>작업 DB 불러오기</label>
+      <input type="file" accept=".db" onchange="loadFile(this.files[0])">
+    </div>
+    <div class="card">
+      <h2>변경 이력 (최근 200건)</h2>
+      <div class="scroll"><table>
+        <thead><tr><th>시각</th><th>담당</th><th>작업</th><th>대상</th><th>번호</th><th>내용</th></tr></thead>
+        <tbody id="ltb"></tbody>
+      </table></div>
+    </div>
+  </section>
+</main>
+</div>
+
+<script src="../vendor/sql-wasm.js"></script>
+<script>
+"use strict";
+/* ───── 기본 설정 (엑셀 _dictionary와 같은 값을 유지) ───── */
+const CENTERS = ["공통", "거주자주차센터", "공영주차센터", "견인주차센터"];
+const CATS    = ["운영시간", "요금", "할인·감면", "월정기", "이용제한", "견인·방치", "주차장 현황", "거주자주차", "기타"];
+const STATUS  = ["확정", "조건부", "문의"];
+const LOTS    = ["노상", "노외", "부설"];
+// 개인정보 형식 차단 (챗봇은 개인정보를 받지 않는 원칙)
+const PII = [
+  { re: /\d{2,3}\s?[가-힣]\s?\d{4}/, name: "차량번호 형식" },
+  { re: /\d{6}\s?-\s?[1-4]\d{6}/,    name: "주민등록번호 형식" },
+  { re: /01[016789]-?\d{3,4}-?\d{4}/, name: "휴대전화번호 형식" },
+  { re: /[\w.+-]+@[\w-]+\.[\w.]+/,   name: "이메일 형식" }
+];
+// 표(표 형태 테이블) 설정
+const TB = {
+  discount: { t: "할인·감면 유형", table: "discount", cols: ["type", "rate", "proof"],
+    labels: ["유형", "할인율(표기)", "확인 방법"], req: ["type", "proof"], phone: [],
+    perm: () => canDisc() },
+  center: { t: "사업장(센터)", table: "center", cols: ["name", "phone", "hours", "scope"],
+    labels: ["센터", "연락처", "운영시간", "담당 범위"], req: ["name", "scope"], phone: ["phone"],
+    perm: () => isSuper() },
+  contact: { t: "문의처", table: "contact", cols: ["name", "phone", "hours", "purpose"],
+    labels: ["구분", "연락처", "운영시간", "안내 용도"], req: ["name", "phone", "hours", "purpose"], phone: ["phone"],
+    perm: () => isSuper() }
+};
+
+/* ───── 상태 ───── */
+let SQL = null, db = null, dbLabel = "";
+let me = null, cur = "dash", editingId = null;
+// 계정 목록 (예시). 실제 이름·연락처는 넣지 않습니다.
+let accounts = [
+  { id: "A1", label: "최고관리자 (예시)", role: "super", center: "", active: true },
+  { id: "A2", label: "공영주차센터 담당자 (예시)", role: "center", center: "공영주차센터", active: true },
+  { id: "A3", label: "거주자주차센터 담당자 (예시)", role: "center", center: "거주자주차센터", active: true },
+  { id: "A4", label: "견인주차센터 담당자 (예시)", role: "center", center: "견인주차센터", active: true }
+];
+
+/* ───── 공통 도우미 ───── */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const isSuper = () => !!me && me.role === "super";
+const canFaq = center => isSuper() || (!!me && me.center === center);
+const canDisc = () => isSuper() || (!!me && me.center === "공영주차센터");
+const nowStamp = () => { const d = new Date(), p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+const todayYM = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}`; };
+
+function rows(sql, params) {
+  const st = db.prepare(sql); if (params) st.bind(params);
+  const out = []; while (st.step()) out.push(st.getAsObject()); st.free(); return out;
+}
+function msg(id, text, kind) { const el = document.getElementById(id); if (!el) return;
+  el.className = "msg " + (kind || ""); el.textContent = text; el.style.display = text ? "" : "none"; }
+function piiCheck(label, text) {
+  const out = []; if (!text) return out;
+  PII.forEach(p => { if (p.re.test(text)) out.push(`${label}: ${p.name}처럼 보이는 내용이 있습니다. 개인정보(차량번호·전화번호·이메일 등)는 넣을 수 없습니다.`); });
+  return out;
+}
+function download(bytes, name) {
+  const url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
+  const a = document.createElement("a"); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+}
+function addLog(action, tbl, key, descr) {
+  db.run("INSERT INTO admin_log (at, who, action, tbl, key, descr) VALUES (?,?,?,?,?,?)",
+    [nowStamp(), me ? me.label : "", action, tbl, key, descr]);
+}
+
+/* ───── DB 읽기 ───── */
+async function init() {
+  SQL = await initSqlJs({ locateFile: f => "../vendor/" + f });
+  try {
+    const r = await fetch("../data/chatbot.db?t=" + Date.now());
+    if (!r.ok) throw new Error(r.status);
+    loadBytes(new Uint8Array(await r.arrayBuffer()), "공개 DB (data/chatbot.db)");
+  } catch (e) {
+    msg("dbmsg", "공개 DB를 자동으로 읽지 못했습니다. 아래에서 작업 DB 파일을 직접 불러오세요.", "warn");
+  }
+  renderAccountOptions();
+}
+function loadBytes(bytes, label) {
+  if (db) db.close();
+  db = new SQL.Database(bytes);
+  const cols = rows("PRAGMA table_info(faq)").map(r => r.name);
+  if (!cols.includes("publish_yn")) db.run("ALTER TABLE faq ADD COLUMN publish_yn TEXT NOT NULL DEFAULT 'Y'");
+  db.run("CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, who TEXT, action TEXT, tbl TEXT, key TEXT, descr TEXT)");
+  dbLabel = label;
+  msg("dbmsg", "DB를 불러왔습니다: " + label, "ok");
+  renderAll();
+}
+function loadFile(file) {
+  if (!file) return;
+  if (!SQL) { msg("dbmsg", "준비 중입니다. 잠시 후 다시 선택하세요.", "warn"); return; }
+  file.arrayBuffer().then(b => loadBytes(new Uint8Array(b), file.name));
+}
+
+/* ───── 로그인 ───── */
+function renderAccountOptions() {
+  $("#acc").innerHTML = accounts.filter(a => a.active !== false).map(a =>
+    `<option value="${esc(a.id)}">${esc(a.label)} · ${a.role === "super" ? "최고관리자" : "사업장 관리자(" + esc(a.center) + ")"}</option>`).join("");
+}
+function login() {
+  const a = accounts.find(x => x.id === $("#acc").value);
+  if (!a) return;
+  me = a;
+  $("#login").classList.add("hide");
+  $("#app").classList.remove("hide");
+  $("#who").textContent = a.role === "super" ? "최고관리자" : "사업장 관리자 · " + a.center;
+  $$(".superonly").forEach(el => el.classList.toggle("hide", a.role !== "super"));
+  show("dash");
+}
+function logout() {
+  me = null; closeFaq();
+  $("#app").classList.add("hide");
+  $("#login").classList.remove("hide");
+  renderAccountOptions();
+}
+function renderAll() { if (me) show(cur); }
+
+/* ───── 화면 전환 ───── */
+function show(v) {
+  if (!me) return;
+  if ((v === "acc" || v === "contact") && !isSuper()) v = "dash";
+  cur = v;
+  ["dash", "faq", "disc", "contact", "acc", "out"].forEach(x => $("#v-" + x).classList.toggle("hide", x !== v));
+  $$("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  if (!db) { $("#dash").innerHTML = '<div class="msg warn">DB가 아직 없습니다. 로그인 화면에서 DB를 불러오세요.</div>'; return; }
+  if (v === "dash") renderDash();
+  if (v === "faq") renderFaqFilters();
+  if (v === "disc") renderTable("discount");
+  if (v === "contact") { renderTable("center"); renderTable("contact"); }
+  if (v === "acc") renderAcc();
+  if (v === "out") renderOut();
+}
+
+/* ───── 대시보드 ───── */
+function renderDash() {
+  const all = rows("SELECT faq_id, center, category, status, publish_yn FROM faq");
+  const scope = isSuper() ? all : all.filter(f => f.center === me.center);
+  const pub = scope.filter(f => f.publish_yn === "Y").length;
+  const chk = scope.filter(f => f.status !== "확정").length;
+  const centers = (isSuper() ? CENTERS : [me.center]).map(c => {
+    const xs = all.filter(f => f.center === c);
+    return `<tr><td>${esc(c)}</td><td>${xs.length}</td><td>${xs.filter(f => f.publish_yn === "Y").length}</td><td>${xs.filter(f => f.status !== "확정").length}</td></tr>`;
+  }).join("");
+  const cats = CATS.map(c => {
+    const n = all.filter(f => f.category === c && f.publish_yn === "Y").length;
+    const low = n < 3 ? `<span class="tag w">보강 필요(3개 미만)</span>` : `<span class="tag">충분</span>`;
+    return `<tr><td>${esc(c)}</td><td>${n}</td><td>${low}</td></tr>`;
+  }).join("");
+  const logs = rows("SELECT * FROM admin_log ORDER BY id DESC LIMIT 5").map(l =>
+    `<tr><td>${esc(l.at)}</td><td>${esc(l.who)}</td><td>${esc(l.action)} · ${esc(l.key)}</td></tr>`).join("") || `<tr><td colspan="3" class="muted">변경 이력이 없습니다.</td></tr>`;
+  $("#dash").innerHTML = `
+    <div class="grid">
+      <div class="stat"><span>내 담당 FAQ</span><b>${scope.length}</b></div>
+      <div class="stat"><span>게시(Y)</span><b>${pub}</b></div>
+      <div class="stat"><span>비공개(N)</span><b>${scope.length - pub}</b></div>
+      <div class="stat"><span>확인 필요 (조건부·문의)</span><b>${chk}</b></div>
+    </div>
+    <div class="two">
+      <div class="card"><h2>센터별 현황</h2><div class="scroll"><table>
+        <thead><tr><th>센터</th><th>전체</th><th>게시</th><th>확인 필요</th></tr></thead><tbody>${centers}</tbody></table></div></div>
+      <div class="card"><h2>분류별 게시 개수 (챗봇 기준)</h2><div class="scroll"><table>
+        <thead><tr><th>분류</th><th>게시 FAQ</th><th>상태</th></tr></thead><tbody>${cats}</tbody></table></div>
+        <div class="muted" style="margin-top:6px">거주자주차·견인·방치 분류는 3개 미만이면 보강이 필요합니다.</div></div>
+    </div>
+    <div class="card"><h2>최근 변경</h2><div class="scroll"><table>
+      <thead><tr><th>시각</th><th>담당</th><th>작업</th></tr></thead><tbody>${logs}</tbody></table></div></div>
+    <div class="muted">현재 DB: ${esc(dbLabel)}</div>`;
+}
+
+/* ───── FAQ 관리 ───── */
+function renderFaqFilters() {
+  const fc = $("#fc"), keep = fc.value;
+  fc.innerHTML = `<option value="">센터 전체</option>` + CENTERS.map(c => `<option>${c}</option>`).join("");
+  fc.value = keep;
+  renderFaqList();
+}
+function renderFaqList() {
+  if (!db) return;
+  const q = $("#fq").value.trim(), fc = $("#fc").value, fs = $("#fs").value, fp = $("#fp").value;
+  const list = rows("SELECT * FROM faq ORDER BY faq_id").filter(f =>
+    (!fc || f.center === fc) && (!fs || f.status === fs) && (!fp || f.publish_yn === fp) &&
+    (!q || (f.question + " " + f.answer).includes(q)));
+  $("#fcount").textContent = list.length + "건";
+  $("#ftb").innerHTML = list.map(f => `<tr class="click" data-id="${esc(f.faq_id)}">
+    <td>${esc(f.faq_id)}</td><td>${esc(f.center)}</td><td>${esc(f.category)}</td><td>${esc(f.question)}</td>
+    <td>${esc(f.status)}</td>
+    <td>${f.publish_yn === "Y" ? '<span class="tag">게시</span>' : '<span class="tag n">비공개</span>'}</td>
+    <td>${canFaq(f.center) ? "수정" : "조회"}</td></tr>`).join("");
+}
+function pickFaq(e) { const tr = e.target.closest("tr[data-id]"); if (tr) openFaq(tr.dataset.id); }
+function nextId() {
+  const n = rows("SELECT faq_id FROM faq").map(r => parseInt(r.faq_id.slice(2), 10)).filter(x => !isNaN(x));
+  return "F-" + String(Math.max(0, ...n) + 1).padStart(3, "0");
+}
+function openFaq(id) {
+  editingId = id;
+  const isNew = id === "NEW";
+  let f, syn = [], pl = [];
+  if (isNew) {
+    f = { faq_id: nextId(), center: isSuper() ? "거주자주차센터" : me.center, category: "기타", status: "확정", publish_yn: "N", as_of: todayYM(), question: "", answer: "", source: "" };
+  } else {
+    f = rows("SELECT * FROM faq WHERE faq_id=?", [id])[0];
+    if (!f) return;
+    syn = rows("SELECT keyword FROM faq_synonym WHERE faq_id=? ORDER BY keyword", [id]).map(r => r.keyword);
+    pl = rows("SELECT name, address, lot_type FROM faq_place WHERE faq_id=? ORDER BY pos", [id]);
+  }
+  const ro = !canFaq(f.center);
+  $("#fe_title").textContent = isNew ? "새 FAQ 등록" : `FAQ ${f.faq_id} ${ro ? "(조회)" : "수정"}`;
+  const centerOpts = isSuper() ? CENTERS : [...new Set([f.center, me.center])];
+  $("#e_center").innerHTML = centerOpts.map(c => `<option ${c === f.center ? "selected" : ""}>${c}</option>`).join("");
+  $("#e_cat").innerHTML = CATS.map(c => `<option ${c === f.category ? "selected" : ""}>${c}</option>`).join("");
+  $("#e_status").innerHTML = STATUS.map(c => `<option ${c === f.status ? "selected" : ""}>${c}</option>`).join("");
+  $("#e_id").value = f.faq_id;
+  $("#e_pub").value = f.publish_yn;
+  $("#e_asof").value = f.as_of || "";
+  $("#e_q").value = f.question || "";
+  $("#e_a").value = f.answer || "";
+  $("#e_src").value = f.source || "";
+  $("#e_syn").value = syn.join(", ");
+  $("#e_pl").value = pl.map(p => `${p.name} | ${p.address} | ${p.lot_type}`).join("\n");
+  $("#e_id").disabled = !isNew;
+  ["e_center", "e_cat", "e_status", "e_pub", "e_asof", "e_q", "e_a", "e_src", "e_syn", "e_pl"].forEach(i => $("#" + i).disabled = ro);
+  $("#e_save").classList.toggle("hide", ro);
+  $("#fe_ro").classList.toggle("hide", !ro);
+  msg("e_msg", "");
+  $("#fe").classList.remove("hide");
+  $("#fe").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function closeFaq() { editingId = null; $("#fe").classList.add("hide"); }
+function readFaq() {
+  return {
+    faq_id: $("#e_id").value.trim(), center: $("#e_center").value, category: $("#e_cat").value,
+    status: $("#e_status").value, publish_yn: $("#e_pub").value, as_of: $("#e_asof").value.trim(),
+    question: $("#e_q").value.trim(), answer: $("#e_a").value.trim(), source: $("#e_src").value.trim(),
+    syn: [...new Set($("#e_syn").value.split(/[,\n，]/).map(s => s.trim()).filter(Boolean))],
+    places: $("#e_pl").value.split("\n").map(s => s.trim()).filter(Boolean).map(l => {
+      const p = l.split("|").map(x => x.trim());
+      return { name: p[0] || "", address: p[1] || "", lot_type: p[2] || "", bad: p.length !== 3 || !p[0] || !p[1] || !LOTS.includes(p[2]) };
+    })
+  };
+}
+function validateFaq(f, isNew) {
+  const e = [];
+  if (!/^F-\d{3}$/.test(f.faq_id)) e.push("FAQ 번호는 F-### 형식이어야 합니다. (예: F-075)");
+  if (isNew && f.faq_id && rows("SELECT 1 FROM faq WHERE faq_id=?", [f.faq_id]).length) e.push("이미 있는 FAQ 번호입니다.");
+  if (!canFaq(f.center)) e.push("이 센터의 FAQ를 등록·수정할 권한이 없습니다.");
+  if (!CENTERS.includes(f.center)) e.push("센터 구분을 선택하세요.");
+  if (!CATS.includes(f.category)) e.push("분류를 선택하세요.");
+  if (!STATUS.includes(f.status)) e.push("상태를 선택하세요.");
+  if (!["Y", "N"].includes(f.publish_yn)) e.push("게시 여부를 선택하세요.");
+  if (!f.question) e.push("질문을 입력하세요.");
+  if (!f.answer) e.push("답변을 입력하세요.");
+  if (!f.source) e.push("근거를 입력하세요. (예: 조례 제○조, 공단 현황자료)");
+  if (!/^\d{4}\.\d{2}$/.test(f.as_of)) e.push("기준시점은 2026.09 형식으로 입력하세요.");
+  if (f.answer.length > 2000) e.push("답변은 2000자 이하로 써 주세요.");
+  f.syn.forEach(k => { if (k.length > 30) e.push(`동의어 '${k.slice(0, 10)}…'가 너무 깁니다. (30자 이하)`); });
+  f.places.forEach((p, i) => { if (p.bad) e.push(`주차장 ${i + 1}행: 「이름 | 주소 | 노상·노외·부설」 형식으로 입력하세요.`); });
+  e.push(...piiCheck("질문", f.question), ...piiCheck("답변", f.answer), ...piiCheck("근거", f.source),
+         ...piiCheck("동의어", f.syn.join(" ")), ...piiCheck("주차장", f.places.map(p => p.name + " " + p.address).join(" ")));
+  return e;
+}
+function saveFaq() {
+  const f = readFaq(), isNew = editingId === "NEW";
+  const errs = validateFaq(f, isNew);
+  if (errs.length) return msg("e_msg", "저장할 수 없습니다.\n" + errs.map(x => "· " + x).join("\n"), "err");
+  db.run("BEGIN");
+  try {
+    if (isNew) {
+      db.run("INSERT INTO faq (faq_id, center, category, question, answer, source, as_of, status, publish_yn) VALUES (?,?,?,?,?,?,?,?,?)",
+        [f.faq_id, f.center, f.category, f.question, f.answer, f.source, f.as_of, f.status, f.publish_yn]);
+    } else {
+      db.run("UPDATE faq SET center=?, category=?, question=?, answer=?, source=?, as_of=?, status=?, publish_yn=? WHERE faq_id=?",
+        [f.center, f.category, f.question, f.answer, f.source, f.as_of, f.status, f.publish_yn, f.faq_id]);
+      db.run("DELETE FROM faq_synonym WHERE faq_id=?", [f.faq_id]);
+      db.run("DELETE FROM faq_place WHERE faq_id=?", [f.faq_id]);
+    }
+    f.syn.forEach(k => db.run("INSERT OR IGNORE INTO faq_synonym (keyword, faq_id) VALUES (?,?)", [k, f.faq_id]));
+    f.places.forEach((p, i) => db.run("INSERT INTO faq_place (faq_id, pos, name, address, lot_type) VALUES (?,?,?,?,?)",
+      [f.faq_id, i + 1, p.name, p.address, p.lot_type]));
+    addLog(isNew ? "FAQ 신규" : "FAQ 수정", "faq", f.faq_id, f.question.slice(0, 40));
+    db.run("COMMIT");
+  } catch (e) {
+    db.run("ROLLBACK");
+    return msg("e_msg", "저장 중 오류: " + e.message, "err");
+  }
+  closeFaq();
+  renderFaqList();
+  msg("list_msg", `${f.faq_id} 저장했습니다. (작업 DB 반영 · 챗봇 공개는 '내보내기·이력'에서 공개용 DB를 받아 저장소에 올려야 완료됩니다)`, "ok");
+}
+
+/* ───── 표 편집 (할인·감면 / 센터 / 문의처) ───── */
+function renderTable(k, data) {
+  const c = TB[k], box = $("#t_" + k);
+  if (!db || !box) return;
+  const ro = !c.perm();
+  if (!data) data = rows(`SELECT ${c.cols.join(",")} FROM ${c.table} ORDER BY pos`);
+  box.innerHTML = `<div class="scroll"><table>
+    <thead><tr>${c.labels.map(l => `<th>${l}</th>`).join("")}<th></th></tr></thead>
+    <tbody>${data.map((r, i) => `<tr>${c.cols.map(col => `<td><input class="w" data-k="${k}" data-i="${i}" data-c="${col}" value="${esc(r[col] ?? "")}" ${ro ? "disabled" : ""}></td>`).join("")}
+      <td>${ro ? "" : `<button class="btn d" onclick="delRow('${k}',${i})">삭제</button>`}</td></tr>`).join("")}</tbody>
+  </table></div>
+  <div class="row">${ro ? '<span class="muted">이 표는 최고관리자만 수정할 수 있습니다.</span>' : ""}${ro ? "" :
+    `<button class="btn" onclick="addRow('${k}')">+ 행 추가</button><button class="btn p" onclick="saveTable('${k}')">저장</button>`}</div>
+  <div id="m_${k}"></div>`;
+}
+function collectTable(k) {
+  const c = TB[k], n = document.querySelectorAll(`[data-k="${k}"][data-c="${c.cols[0]}"]`).length, out = [];
+  for (let i = 0; i < n; i++) {
+    const r = {};
+    c.cols.forEach(col => { const el = document.querySelector(`[data-k="${k}"][data-i="${i}"][data-c="${col}"]`); r[col] = el ? el.value.trim() : ""; });
+    out.push(r);
+  }
+  return out;
+}
+function addRow(k) { const d = collectTable(k); d.push(Object.fromEntries(TB[k].cols.map(c => [c, ""]))); renderTable(k, d); }
+function delRow(k, i) { const d = collectTable(k); d.splice(i, 1); renderTable(k, d); }
+function validateTable(k, data) {
+  const c = TB[k], e = [];
+  data.forEach((r, i) => {
+    const no = i + 1;
+    c.req.forEach(col => { if (!r[col]) e.push(`${no}행: 「${c.labels[c.cols.indexOf(col)]}」을(를) 입력하세요.`); });
+    c.phone.forEach(col => {
+      if (!r[col]) return;
+      if (!/^0\d{1,2}-\d{3,4}-\d{4}$/.test(r[col])) e.push(`${no}행: 연락처는 02-000-0000 형식으로 입력하세요.`);
+    });
+    c.cols.filter(col => !c.phone.includes(col)).forEach(col =>
+      e.push(...piiCheck(`${no}행 ${c.labels[c.cols.indexOf(col)]}`, r[col])));
+  });
+  return e;
+}
+function saveTable(k) {
+  const c = TB[k];
+  const data = collectTable(k).filter(r => c.cols.some(col => r[col]));
+  const errs = validateTable(k, data);
+  if (errs.length) return msg("m_" + k, "저장할 수 없습니다.\n" + errs.map(x => "· " + x).join("\n"), "err");
+  const ph = c.cols.map(() => "?").join(",");
+  db.run("BEGIN");
+  try {
+    db.run(`DELETE FROM ${c.table}`);
+    data.forEach((r, i) => db.run(`INSERT INTO ${c.table} (pos, ${c.cols.join(",")}) VALUES (?,${ph})`,
+      [i + 1, ...c.cols.map(col => r[col] || null)]));
+    addLog("표 저장", c.table, data.length + "행", c.t + " 표 저장");
+    db.run("COMMIT");
+  } catch (e) { db.run("ROLLBACK"); return msg("m_" + k, "저장 중 오류: " + e.message, "err"); }
+  renderTable(k);
+  msg("m_" + k, "저장했습니다. (작업 DB 반영)", "ok");
+}
+
+/* ───── 관리자 권한 (최고관리자) ───── */
+function renderAcc() {
+  $("#atb").innerHTML = accounts.map((a, i) => `<tr>
+    <td><input class="w" data-a="${i}" data-f="label" value="${esc(a.label)}"></td>
+    <td><select data-a="${i}" data-f="role">
+      <option value="super" ${a.role === "super" ? "selected" : ""}>최고관리자</option>
+      <option value="center" ${a.role === "center" ? "selected" : ""}>사업장 관리자</option></select></td>
+    <td><select data-a="${i}" data-f="center"><option value="">(없음)</option>${CENTERS.map(c => `<option ${a.center === c ? "selected" : ""}>${c}</option>`).join("")}</select></td>
+    <td><select data-a="${i}" data-f="active"><option value="Y" ${a.active !== false ? "selected" : ""}>사용</option><option value="N" ${a.active === false ? "selected" : ""}>중지</option></select></td>
+    <td><button class="btn d" onclick="delAcc(${i})">삭제</button></td></tr>`).join("");
+}
+function readAcc() {
+  return accounts.map((a, i) => {
+    const g = f => document.querySelector(`[data-a="${i}"][data-f="${f}"]`).value;
+    return { id: a.id, label: g("label").trim(), role: g("role"), center: g("center"), active: g("active") === "Y" };
+  });
+}
+function addAcc() { accounts = readAcc(); accounts.push({ id: "A" + Date.now().toString(36), label: "새 담당자 (직책 입력)", role: "center", center: "공영주차센터", active: true }); renderAcc(); }
+function delAcc(i) { accounts = readAcc(); accounts.splice(i, 1); renderAcc(); }
+function saveAcc() {
+  const next = readAcc(), e = [];
+  next.forEach((a, i) => {
+    if (!a.label) e.push(`${i + 1}번: 표시 이름을 입력하세요.`);
+    if (a.role === "center" && !a.center) e.push(`${i + 1}번: 사업장 관리자는 담당 센터를 골라야 합니다.`);
+    if (a.role === "super") a.center = "";
+  });
+  if (!next.some(a => a.role === "super" && a.active)) e.push("사용 중인 최고관리자가 최소 1명 있어야 합니다.");
+  if (e.length) return msg("acc_msg", "저장할 수 없습니다.\n" + e.map(x => "· " + x).join("\n"), "err");
+  accounts = next;
+  msg("acc_msg", "권한을 저장했습니다. (이 화면을 닫으면 사라지므로 '계정 파일 받기'로 내부에 보관하세요.)", "ok");
+  renderAccountOptions();
+}
+function exportAcc() {
+  const blob = new Blob([JSON.stringify(readAcc(), null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = "admin_accounts_INTERNAL.json"; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  msg("acc_msg", "계정 파일을 받았습니다. 저장소에 올리지 마세요.", "warn");
+}
+function importAcc(file) {
+  if (!file) return;
+  file.text().then(t => {
+    const arr = JSON.parse(t);
+    if (!Array.isArray(arr) || !arr.every(a => a.id && a.label && ["super", "center"].includes(a.role))) throw new Error("형식이 맞지 않습니다.");
+    accounts = arr.map(a => ({ ...a, active: a.active !== false }));
+    renderAcc(); renderAccountOptions();
+    msg("acc_msg", "계정 파일을 불러왔습니다. 확인 후 '권한 저장'을 누르세요.", "ok");
+  }).catch(e => msg("acc_msg", "불러오기 실패: " + e.message, "err"));
+}
+
+/* ───── 내보내기·이력 ───── */
+function renderOut() {
+  const all = rows("SELECT publish_yn FROM faq");
+  $("#out_stat").textContent = `현재 작업 DB: ${dbLabel} · FAQ ${all.length}개 (게시 ${all.filter(f => f.publish_yn === "Y").length}개 / 비공개 ${all.filter(f => f.publish_yn !== "Y").length}개)`;
+  $$(".superonly").forEach(el => el.classList.toggle("hide", !isSuper()));
+  const logs = rows("SELECT * FROM admin_log ORDER BY id DESC LIMIT 200");
+  $("#ltb").innerHTML = logs.map(l => `<tr><td>${esc(l.at)}</td><td>${esc(l.who)}</td><td>${esc(l.action)}</td><td>${esc(l.tbl)}</td><td>${esc(l.key)}</td><td>${esc(l.descr)}</td></tr>`).join("")
+    || `<tr><td colspan="6" class="muted">변경 이력이 없습니다.</td></tr>`;
+}
+function downloadWork() {
+  download(db.export(), "chatbot_work.db");
+  msg("out_msg", "작업용 DB를 받았습니다. 이 파일은 내부에만 보관하고 저장소에 올리지 마세요.", "warn");
+}
+function downloadPublic() {
+  if (!isSuper()) return;
+  const c = new SQL.Database(db.export());
+  try {
+    const hidden = "SELECT faq_id FROM faq WHERE publish_yn='N'";
+    c.run("BEGIN");
+    c.run(`DELETE FROM menu_item WHERE faq_id IN (${hidden})`);
+    c.run(`DELETE FROM faq_place WHERE faq_id IN (${hidden})`);
+    c.run(`DELETE FROM faq_synonym WHERE faq_id IN (${hidden})`);
+    c.run("DELETE FROM faq WHERE publish_yn='N'");
+    c.run("DELETE FROM menu_item WHERE faq_id NOT IN (SELECT faq_id FROM faq)");
+    c.run("DROP TABLE IF EXISTS admin_log");
+    c.run("ALTER TABLE faq DROP COLUMN publish_yn");
+    const n = c.exec("SELECT COUNT(*) FROM faq")[0].values[0][0];
+    c.run("UPDATE meta SET value=? WHERE key='generated_at'", [nowStamp()]);
+    c.run("UPDATE meta SET value=? WHERE key='faq_count'", [String(n)]);
+    c.run("COMMIT");
+    download(c.export(), "chatbot.db");
+    msg("out_msg", `공개용 DB를 받았습니다 (게시 FAQ ${n}개). 받은 chatbot.db를 저장소 data 폴더에 덮어쓰고 Commit → Push 하세요.`, "ok");
+  } catch (e) {
+    c.run("ROLLBACK");
+    msg("out_msg", "공개용 DB 만들기 실패: " + e.message, "err");
+  } finally { c.close(); }
+}
+
+/* ───── 시작 ───── */
+init();
+</script>
+</body>
+</html>
