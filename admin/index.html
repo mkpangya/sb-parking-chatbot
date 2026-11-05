@@ -9,17 +9,24 @@
 :root{--ink:#111827;--mut:#6B7280;--line:#E5E7EB;--bg:#F5F7FB;--pri:#2563EB;--warn:#92400E;--warnbg:#FEF3C7;--err:#B91C1C;--errbg:#FEE2E2;--ok:#065F46;--okbg:#D1FAE5}
 *{box-sizing:border-box}
 body{margin:0;font-family:Pretendard,"Malgun Gothic",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
-header{background:#1E3A8A;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+header.top{background:#1E3A8A;color:#fff;padding:14px max(20px, calc((100% - 1200px) / 2 + 20px))}
+.hwrap{width:100%;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px 16px}
+.hleft{justify-self:end;display:flex}
+.hright{justify-self:end;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.hbtn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer;white-space:nowrap}
+.hbtn:hover{background:rgba(255,255,255,.26)}
+.hbtn svg{flex:none}
+@media (max-width:860px){.hwrap{grid-template-columns:1fr}.brand,.hright{justify-self:start;justify-content:flex-start}.hleft{justify-self:start}}
+.brand{display:flex;align-items:center;gap:12px;justify-content:flex-start;justify-self:start;min-width:0}
 .logo-tile{background:#fff;border-radius:12px;padding:4px 8px;box-shadow:0 2px 8px rgba(0,0,0,.18);flex:none;display:flex;align-items:center}
 .logo-tile img{height:46px;width:auto;display:block}
-.brand-text{display:flex;flex-direction:column;gap:2px;min-width:0}
-.brand-name{font-size:17px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.brand-text{display:flex;flex-direction:column;gap:2px;min-width:0;text-align:left}
+.brand-name{font-size:17px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;justify-content:flex-start;gap:8px;white-space:nowrap}
 .brand-sub{font-size:12px;opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pill{font-size:11px;font-weight:700;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.45);padding:1px 8px;border-radius:999px}
 header a{color:#fff;font-size:13px}
 .badge{background:rgba(255,255,255,.18);padding:4px 10px;border-radius:999px;font-size:12px}
-nav{background:#fff;border-bottom:1px solid var(--line);display:flex;gap:8px;padding:12px 16px;overflow-x:auto;box-shadow:0 1px 3px rgba(17,24,39,.04)}
+nav{background:#fff;border-bottom:1px solid var(--line);display:flex;justify-content:flex-start;flex-wrap:wrap;gap:8px;padding:12px max(20px, calc((100% - 1200px) / 2 + 20px));box-shadow:0 1px 3px rgba(17,24,39,.04)}
 nav button{border:1px solid #BFCBDB;background:#F8FAFC;padding:9px 16px;border-radius:8px;font:inherit;font-size:14px;font-weight:700;color:#1F2937;cursor:pointer;white-space:nowrap}
 nav button:hover{background:#EEF4FF;border-color:#60A5FA;color:#1E40AF}
 nav button.on{background:#1D4ED8;border-color:#1D4ED8;color:#fff;box-shadow:0 2px 6px rgba(29,78,216,.35)}
@@ -92,7 +99,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .steps li{margin-bottom:6px}
 .scroll{overflow-x:auto}
-@media (max-width:700px){.two{grid-template-columns:1fr}main{padding:12px}}
+@media (max-width:700px){.two{grid-template-columns:1fr}main{padding:12px}header.top,nav{padding-left:12px;padding-right:12px}}
 </style>
 </head>
 <body>
@@ -152,18 +159,22 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 
 <!-- 3. 관리자 본 화면 -->
 <div id="app" class="hide">
-<header>
-  <div class="brand">
-    <div class="logo-tile"><img src="../images/mascot-full.jpg" alt="주차 안내 AI 쳇봇 마스코트"></div>
-    <div class="brand-text">
-      <div class="brand-name">주차 안내 AI 쳇봇 <span class="pill">시험용</span></div>
-      <div class="brand-sub">관리자 화면 · 성북구도시관리공단 주차사업팀</div>
+<header class="top">
+  <div class="hwrap">
+    <div class="brand">
+      <div class="logo-tile"><img src="../images/mascot-full.jpg" alt="주차 안내 AI 쳇봇 마스코트"></div>
+      <div class="brand-text">
+        <div class="brand-name">주차 안내 AI 쳇봇 <span class="pill">시험용</span></div>
+        <div class="brand-sub">관리자 화면 · 성북구도시관리공단 주차사업팀</div>
+      </div>
+    </div>
+    <div class="hright">
+      <span class="badge" id="who"></span>
+      <a class="hbtn" href="../index.html"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>챗봇 화면</a>
+      <button class="hbtn" onclick="showPwChange(false)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l3 3"/></svg>내 비밀번호 변경</button>
+      <button class="hbtn" onclick="logout()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>나가기</button>
     </div>
   </div>
-  <span class="badge" id="who"></span>
-  <a href="../index.html">챗봇 화면 보기</a>
-  <button class="btn" onclick="showPwChange(false)" style="font-size:12px">내 비밀번호 변경</button>
-  <button class="btn" onclick="logout()" style="font-size:12px">나가기</button>
 </header>
 <nav>
   <button data-v="dash" onclick="show('dash')">대시보드</button>
@@ -171,6 +182,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
   <button data-v="disc" onclick="show('disc')">할인·감면</button>
   <button data-v="contact" class="superonly" onclick="show('contact')">센터·문의처</button>
   <button data-v="acc" class="superonly" onclick="show('acc')">관리자 권한</button>
+  <button data-v="log" class="superonly" onclick="show('log')">로그관리</button>
   <button data-v="out" class="superonly" onclick="show('out')">시스템 관리</button>
 </nav>
 
@@ -305,16 +317,33 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
       <div id="out_msg"></div>
       <div class="muted" id="out_stat"></div>
     </div>
+      </section>
+
+  <!-- 로그관리 (최고관리자 전용) -->
+  <section id="v-log" class="hide">
     <div class="card">
-      <h2>접속·계정 기록 (최근 200건)</h2>
-      <div class="muted">로그인 성공·실패, 잠김, 비밀번호 변경, 권한 저장 기록입니다. 접속 IP는 서버가 없어 '미기록'으로 표시됩니다.</div>
+      <div class="row" style="justify-content:space-between">
+        <div><h2 style="margin:0">로그관리</h2><div class="muted">접속·계정 기록과 데이터 변경 이력을 조회하고 내려받습니다. 안전성 확보조치 기준에 따라 보관하세요.</div></div>
+        <div class="row" style="margin:0">
+          <input id="lq" placeholder="아이디·작업·내용 검색" oninput="renderLog()" style="min-width:220px">
+          <select id="lres" onchange="renderLog()"><option value="">결과 전체</option><option value="성공">성공</option><option value="실패">실패</option><option value="거부">거부</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">접속 · 계정 기록</h2>
+        <button class="btn" onclick="exportCsv('access')">CSV 받기</button></div>
+      <div class="muted" id="alog_cnt" style="margin:6px 0"></div>
+      <div class="muted">로그인 성공·실패, 잠김, 로그아웃, 비밀번호 변경, 권한 저장 기록입니다. 접속 IP는 서버가 없어 '미기록'으로 표시됩니다.</div>
       <div class="scroll"><table>
         <thead><tr><th>시각</th><th>아이디</th><th>작업</th><th>결과</th><th>IP</th><th>접속 환경</th></tr></thead>
         <tbody id="alog"></tbody>
       </table></div>
     </div>
     <div class="card">
-      <h2>변경 이력 (최근 200건)</h2>
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">데이터 변경 이력</h2>
+        <button class="btn" onclick="exportCsv('change')">CSV 받기</button></div>
+      <div class="muted" id="ltb_cnt" style="margin:6px 0"></div>
       <div class="scroll"><table>
         <thead><tr><th>시각</th><th>담당</th><th>작업</th><th>대상</th><th>번호</th><th>내용</th><th>IP</th><th>접속 환경</th></tr></thead>
         <tbody id="ltb"></tbody>
@@ -662,9 +691,9 @@ function renderAll() { if (me && !$("#app").classList.contains("hide")) show(cur
 /* ───── 화면 전환 ───── */
 function show(v) {
   if (!me) return;
-  if ((v === "acc" || v === "contact" || v === "out") && !isSuper()) v = "dash";
+  if ((v === "acc" || v === "contact" || v === "out" || v === "log") && !isSuper()) v = "dash";
   cur = v;
-  ["dash", "faq", "disc", "contact", "acc", "out"].forEach(x => $("#v-" + x).classList.toggle("hide", x !== v));
+  ["dash", "faq", "disc", "contact", "acc", "out", "log"].forEach(x => $("#v-" + x).classList.toggle("hide", x !== v));
   $$("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
   if (!db) { $("#dash").innerHTML = '<div class="msg warn">DB가 아직 없습니다. 로그인 화면에서 DB를 불러오세요.</div>'; return; }
   if (v === "dash") renderDash();
@@ -673,6 +702,7 @@ function show(v) {
   if (v === "contact") { renderTable("center"); renderTable("contact"); }
   if (v === "acc") renderAcc();
   if (v === "out") renderOut();
+  if (v === "log") renderLog();
 }
 
 /* ───── 대시보드 (그래프 + 바로가기) ───── */
@@ -1028,12 +1058,33 @@ function renderOut() {
   $("#dbnow").textContent = dbLabel;
   $("#out_stat").textContent = `현재 작업 DB: ${dbLabel} · FAQ ${all.length}개 (게시 ${all.filter(f => f.publish_yn === "Y").length}개 / 비공개 ${all.filter(f => f.publish_yn !== "Y").length}개)`;
   $("#cachenote").textContent = localStorage.getItem(CACHE_KEY) ? "이 브라우저에 임시 저장본이 있습니다 (" + (localStorage.getItem(CACHE_KEY + "_at") || "") + "). 공개용 DB를 새로 적용하려면 '임시 저장본 삭제'를 누르세요." : "이 브라우저에 임시 저장본이 없습니다.";
-  const logs = rows("SELECT * FROM admin_log ORDER BY id DESC LIMIT 200");
-  $("#ltb").innerHTML = logs.map(l => `<tr><td>${esc(l.at)}</td><td>${esc(l.who)}</td><td>${esc(l.action)}</td><td>${esc(l.tbl)}</td><td>${esc(l.key)}</td><td>${esc(l.descr)}</td><td class="muted">${esc(l.ip || "-")}</td><td class="muted">${esc(l.client || "-")}</td></tr>`).join("")
-    || `<tr><td colspan="8" class="muted">변경 이력이 없습니다.</td></tr>`;
-  const acc = rows("SELECT * FROM admin_access_log ORDER BY id DESC LIMIT 200");
+}
+// 로그관리: 접속·계정 기록 / 데이터 변경 이력 (검색·결과 필터, CSV 내려받기)
+let LOG_CACHE = { access: [], change: [] };
+function renderLog() {
+  if (!db) return;
+  const q = ($("#lq").value || "").trim(), res = $("#lres").value;
+  const acc = rows("SELECT * FROM admin_access_log ORDER BY id DESC LIMIT 1000").filter(l =>
+    (!q || [l.login_id, l.action, l.result].join(" ").includes(q)) && (!res || (l.result || "").startsWith(res)));
+  const chg = rows("SELECT * FROM admin_log ORDER BY id DESC LIMIT 1000").filter(l =>
+    (!q || [l.who, l.action, l.tbl, l.key, l.descr].join(" ").includes(q)));
+  LOG_CACHE = { access: acc, change: chg };
+  $("#alog_cnt").textContent = `${acc.length}건 (최근 1,000건 중 조건에 맞는 기록)`;
+  $("#ltb_cnt").textContent = `${chg.length}건 (최근 1,000건 중 조건에 맞는 기록)`;
   $("#alog").innerHTML = acc.map(l => `<tr><td>${esc(l.at)}</td><td>${esc(l.login_id)}</td><td>${esc(l.action)}</td><td>${esc(l.result)}</td><td class="muted">${esc(l.ip || "-")}</td><td class="muted">${esc(l.client || "-")}</td></tr>`).join("")
-    || `<tr><td colspan="6" class="muted">접속 기록이 없습니다.</td></tr>`;
+    || `<tr><td colspan="6" class="muted">조건에 맞는 접속 기록이 없습니다.</td></tr>`;
+  $("#ltb").innerHTML = chg.map(l => `<tr><td>${esc(l.at)}</td><td>${esc(l.who)}</td><td>${esc(l.action)}</td><td>${esc(l.tbl)}</td><td>${esc(l.key)}</td><td>${esc(l.descr)}</td><td class="muted">${esc(l.ip || "-")}</td><td class="muted">${esc(l.client || "-")}</td></tr>`).join("")
+    || `<tr><td colspan="8" class="muted">조건에 맞는 변경 이력이 없습니다.</td></tr>`;
+}
+function exportCsv(kind) {
+  if (!isSuper()) return;
+  const isAcc = kind === "access";
+  const head = isAcc ? ["시각", "아이디", "작업", "결과", "IP", "접속환경"] : ["시각", "담당", "작업", "대상", "번호", "내용", "IP", "접속환경"];
+  const data = isAcc ? LOG_CACHE.access.map(l => [l.at, l.login_id, l.action, l.result, l.ip, l.client])
+                     : LOG_CACHE.change.map(l => [l.at, l.who, l.action, l.tbl, l.key, l.descr, l.ip, l.client]);
+  const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const csv = "\ufeff" + [head, ...data].map(r => r.map(q).join(",")).join("\r\n");
+  download(new TextEncoder().encode(csv), isAcc ? "접속계정기록.csv" : "데이터변경이력.csv", "text/csv");
 }
 function downloadWork() {
   if (!isSuper()) return;
