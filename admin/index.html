@@ -264,7 +264,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
       <div class="muted">권한: 최고관리자는 전체 FAQ·센터·문의처·계정·내보내기를 관리합니다. 사업장 관리자는 자기 센터 FAQ와(공영주차센터인 경우) 할인·감면을 편집합니다.</div>
       <div class="muted" style="margin-top:4px">비밀번호: 새 값을 넣고 '권한 저장'하면 임시 비밀번호가 됩니다. 사용자는 다음 로그인 때 직접 바꿔야 합니다. '기본값으로 초기화'는 sb111111로 되돌립니다. 5회 틀리면 잠깁니다.</div>
       <div class="scroll"><table>
-        <thead><tr><th>아이디</th><th>표시 이름(직책)</th><th>역할</th><th>담당 센터</th><th>사용</th><th>임시 비밀번호 (변경 시만 입력)</th><th>상태</th></tr></thead>
+        <thead><tr><th>아이디</th><th>표시 이름(직책)</th><th>역할</th><th>담당 센터</th><th>사용</th><th>임시 비밀번호 (변경 시만 입력)</th><th>상태</th><th>수정자</th><th>수정일시</th><th>수정IP</th></tr></thead>
         <tbody id="atb"></tbody>
       </table></div>
       <div class="row">
@@ -284,6 +284,8 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
       <div class="muted">현재: <span id="dbnow"></span> · 작업 중이던 chatbot_work.db가 있으면 여기서 불러오세요.</div>
       <input type="file" accept=".db" onchange="loadFile(this.files[0])" style="margin-top:8px">
       <div id="dbmsg"></div>
+      <div class="muted" id="cachenote" style="margin-top:8px"></div>
+      <div class="row"><button class="btn d" onclick="clearCacheAndReload()">임시 저장본 삭제 (공개 DB 다시 읽기)</button></div>
     </div>
     <div class="card">
       <h2>작업 흐름</h2>
@@ -304,9 +306,17 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
       <div class="muted" id="out_stat"></div>
     </div>
     <div class="card">
+      <h2>접속·계정 기록 (최근 200건)</h2>
+      <div class="muted">로그인 성공·실패, 잠김, 비밀번호 변경, 권한 저장 기록입니다. 접속 IP는 서버가 없어 '미기록'으로 표시됩니다.</div>
+      <div class="scroll"><table>
+        <thead><tr><th>시각</th><th>아이디</th><th>작업</th><th>결과</th><th>IP</th><th>접속 환경</th></tr></thead>
+        <tbody id="alog"></tbody>
+      </table></div>
+    </div>
+    <div class="card">
       <h2>변경 이력 (최근 200건)</h2>
       <div class="scroll"><table>
-        <thead><tr><th>시각</th><th>담당</th><th>작업</th><th>대상</th><th>번호</th><th>내용</th></tr></thead>
+        <thead><tr><th>시각</th><th>담당</th><th>작업</th><th>대상</th><th>번호</th><th>내용</th><th>IP</th><th>접속 환경</th></tr></thead>
         <tbody id="ltb"></tbody>
       </table></div>
     </div>
@@ -345,13 +355,8 @@ const TB = {
 /* ───── 상태 ───── */
 let SQL = null, db = null, dbLabel = "";
 let me = null, cur = "dash", editingId = null, pwForced = false;
-// 계정 (예시). 실제 이름·연락처는 넣지 않습니다. 비밀번호는 PBKDF2 해시로만 보관합니다.
-let accounts = [
-  { id: "A1", loginId: "super_admin",      label: "최고관리자 (예시)",           role: "super",  center: "",               active: true },
-  { id: "A2", loginId: "parking_gong",     label: "공영주차센터 담당자 (예시)",   role: "center", center: "공영주차센터",   active: true },
-  { id: "A3", loginId: "parking_resident", label: "거주자주차센터 담당자 (예시)", role: "center", center: "거주자주차센터", active: true },
-  { id: "A4", loginId: "parking_tow",      label: "견인주차센터 담당자 (예시)",   role: "center", center: "견인주차센터",   active: true }
-];
+// 계정은 DB(admin_account 테이블)에서 읽습니다.
+let accounts = [];
 
 /* ───── 공통 도우미 ───── */
 const $ = s => document.querySelector(s);
@@ -382,8 +387,8 @@ function download(bytes, name, type) {
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
 }
 function addLog(action, tbl, key, descr) {
-  db.run("INSERT INTO admin_log (at, who, action, tbl, key, descr) VALUES (?,?,?,?,?,?)",
-    [nowStamp(), me ? me.label : "", action, tbl, key, descr]);
+  db.run("INSERT INTO admin_log (at, who, action, tbl, key, descr, ip, client) VALUES (?,?,?,?,?,?,?,?)",
+    [nowStamp(), me ? me.loginId : "", action, tbl, key, descr, CLIENT_IP, clientInfo()]);
 }
 
 /* ───── 비밀번호 (PBKDF2-SHA256, 브라우저 내장 암호 기능 사용) ───── */
@@ -398,7 +403,7 @@ function hashPw(pw, saltHex, iter) {
 async function setPassword(a, pw, mustChange) {
   const salt = bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
   a.pw = { salt, hash: await hashPw(pw, salt), iter: PBKDF_ITER, algo: "PBKDF2-SHA256" };
-  a.mustChange = !!mustChange; a.failCount = 0; a.locked = false;
+  a.mustChange = !!mustChange; a.failCount = 0; a.locked = false; a.pwChangedAt = nowStamp();
   return a;
 }
 async function checkPw(a, pw) {
@@ -429,25 +434,137 @@ function pwPolicy(pw, loginId) {
 }
 
 /* ───── DB 읽기 ───── */
+/* ───── DB 저장 계층: 계정 · 접속기록 · 변경 이력 ───── */
+const SEED_ACCOUNTS = [
+  { loginId: "super_admin",      label: "최고관리자 (예시)",           role: "super",  center: "",               active: true },
+  { loginId: "parking_gong",     label: "공영주차센터 담당자 (예시)",   role: "center", center: "공영주차센터",   active: true },
+  { loginId: "parking_resident", label: "거주자주차센터 담당자 (예시)", role: "center", center: "거주자주차센터", active: true },
+  { loginId: "parking_tow",      label: "견인주차센터 담당자 (예시)",   role: "center", center: "견인주차센터",   active: true }
+];
+// 서버가 없어 접속 IP를 웹페이지에서 알 수 없습니다. 운영 시 서버(또는 기관 방화벽·접속 로그)에서 기록해야 합니다.
+const CLIENT_IP = "미기록(정적 페이지)";
+const CACHE_KEY = "sbadmin_workdb_cache";
+const clientInfo = () => (navigator.userAgent || "").replace(/\s+/g, " ").slice(0, 120);
+
+function ensureSchema() {
+  db.run("CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, who TEXT, action TEXT, tbl TEXT, key TEXT, descr TEXT)");
+  const cols = rows("PRAGMA table_info(admin_log)").map(r => r.name);
+  if (!cols.includes("ip")) db.run("ALTER TABLE admin_log ADD COLUMN ip TEXT");
+  if (!cols.includes("client")) db.run("ALTER TABLE admin_log ADD COLUMN client TEXT");
+  db.run(`CREATE TABLE IF NOT EXISTS admin_account (
+    login_id TEXT PRIMARY KEY, label TEXT NOT NULL, role TEXT NOT NULL CHECK (role IN ('super','center')),
+    center TEXT, active INTEGER NOT NULL DEFAULT 1,
+    pw_salt TEXT, pw_hash TEXT, pw_algo TEXT, pw_iter INTEGER,
+    must_change INTEGER NOT NULL DEFAULT 1, fail_count INTEGER NOT NULL DEFAULT 0, locked INTEGER NOT NULL DEFAULT 0,
+    pw_changed_at TEXT, created_at TEXT, created_by TEXT,
+    updated_at TEXT, updated_by TEXT, updated_ip TEXT, updated_client TEXT)`);
+  db.run(`CREATE TABLE IF NOT EXISTS admin_access_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, login_id TEXT, action TEXT, result TEXT, ip TEXT, client TEXT)`);
+}
+async function seedIfEmpty() {
+  if (rows("SELECT COUNT(*) AS n FROM admin_account")[0].n > 0) return;
+  for (const s of SEED_ACCOUNTS) {
+    const a = { ...s, pw: null, mustChange: true, failCount: 0, locked: false };
+    await setPassword(a, DEFAULT_PW, true);
+    writeAccount(a, { touch: true, actor: "system(초기 생성)" });
+  }
+}
+// 계정 1건 저장 (비밀번호는 해시만 저장). touch=true면 수정자·수정일시·수정IP를 갱신
+function writeAccount(a, opt = {}) {
+  const cur = rows("SELECT * FROM admin_account WHERE login_id=?", [a.loginId])[0];
+  const now = nowStamp();
+  const created_at = cur ? cur.created_at : now, created_by = cur ? cur.created_by : (opt.actor || "system");
+  const up = opt.touch
+    ? [now, opt.actor || a.loginId, CLIENT_IP, clientInfo()]
+    : cur ? [cur.updated_at, cur.updated_by, cur.updated_ip, cur.updated_client] : [null, null, null, null];
+  db.run(`INSERT OR REPLACE INTO admin_account (login_id,label,role,center,active,pw_salt,pw_hash,pw_algo,pw_iter,
+      must_change,fail_count,locked,pw_changed_at,created_at,created_by,updated_at,updated_by,updated_ip,updated_client)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [a.loginId, a.label, a.role, a.center || "", a.active === false ? 0 : 1,
+     a.pw ? a.pw.salt : null, a.pw ? a.pw.hash : null, a.pw ? a.pw.algo : null, a.pw ? a.pw.iter : null,
+     a.mustChange ? 1 : 0, a.failCount || 0, a.locked ? 1 : 0, a.pwChangedAt || (cur ? cur.pw_changed_at : null),
+     created_at, created_by, ...up]);
+}
+// 목록 전체 저장: 삭제된 계정 제거, 내용이 바뀐 계정만 수정자 기록
+function syncAccounts(list) {
+  db.run("BEGIN");
+  try {
+    const keep = list.map(a => a.loginId);
+    rows("SELECT login_id FROM admin_account").forEach(r => {
+      if (!keep.includes(r.login_id)) db.run("DELETE FROM admin_account WHERE login_id=?", [r.login_id]);
+    });
+    list.forEach(a => {
+      const p = rows("SELECT * FROM admin_account WHERE login_id=?", [a.loginId])[0];
+      const changed = !p || p.label !== a.label || p.role !== a.role || (p.center || "") !== (a.center || "") ||
+        !!p.active !== (a.active !== false) || (p.pw_hash || null) !== (a.pw ? a.pw.hash : null) ||
+        !!p.must_change !== !!a.mustChange || !!p.locked !== !!a.locked;
+      writeAccount(a, { touch: changed, actor: me ? me.loginId : "" });
+    });
+    db.run("COMMIT");
+  } catch (e) { db.run("ROLLBACK"); throw e; }
+}
+function readAccountsFromDb() {
+  return rows("SELECT * FROM admin_account ORDER BY created_at, login_id").map(r => ({
+    id: r.login_id, loginId: r.login_id, label: r.label, role: r.role, center: r.center || "", active: !!r.active,
+    pw: r.pw_hash ? { salt: r.pw_salt, hash: r.pw_hash, iter: r.pw_iter, algo: r.pw_algo } : null,
+    mustChange: !!r.must_change, failCount: r.fail_count, locked: !!r.locked, pwChangedAt: r.pw_changed_at,
+    updated: { at: r.updated_at, by: r.updated_by, ip: r.updated_ip, client: r.updated_client }
+  }));
+}
+function accessLog(action, loginId, result) {
+  db.run("INSERT INTO admin_access_log (at, login_id, action, result, ip, client) VALUES (?,?,?,?,?,?)",
+    [nowStamp(), loginId || "", action, result, CLIENT_IP, clientInfo()]);
+}
+// 작업 DB 전체를 이 브라우저에 임시 저장 (새로고침해도 변경 내용 유지). 정식 보관은 '작업용 DB 받기'
+function persist() {
+  try {
+    const bytes = db.export();
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    localStorage.setItem(CACHE_KEY, btoa(bin));
+    localStorage.setItem(CACHE_KEY + "_at", nowStamp());
+  } catch (e) { /* 저장 공간·권한 문제: 화면 작업은 계속 가능 */ }
+}
+function restoreCache() {
+  try {
+    const v = localStorage.getItem(CACHE_KEY); if (!v) return null;
+    const bin = atob(v), arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return { bytes: arr, at: localStorage.getItem(CACHE_KEY + "_at") || "" };
+  } catch (e) { return null; }
+}
+function clearCache() { try { localStorage.removeItem(CACHE_KEY); localStorage.removeItem(CACHE_KEY + "_at"); } catch (e) { /* 무시 */ } }
+function clearCacheAndReload() {
+  if (!confirm("이 브라우저의 임시 저장본을 지우고 공개 DB를 다시 읽습니다.\n아직 '작업용 DB 받기'로 내려받지 않은 변경 내용은 사라집니다. 계속할까요?")) return;
+  clearCache();
+  location.reload();
+}
+
 async function init() {
   loadRememberedId();
   SQL = await initSqlJs({ locateFile: f => "../vendor/" + f });
-  for (const a of accounts) await setPassword(a, DEFAULT_PW, true);
+  const cached = restoreCache();
+  if (cached) {
+    try { await loadBytes(cached.bytes, "브라우저 임시 저장본 (" + cached.at + " 저장)"); return; }
+    catch (e) { clearCache(); }
+  }
   try {
     const r = await fetch("../data/chatbot.db?t=" + Date.now());
     if (!r.ok) throw new Error(r.status);
-    loadBytes(new Uint8Array(await r.arrayBuffer()), "공개 DB (data/chatbot.db)");
+    await loadBytes(new Uint8Array(await r.arrayBuffer()), "공개 DB (data/chatbot.db)");
   } catch (e) {
     dbLabel = "없음";
     msg("dbmsg", "공개 DB를 자동으로 읽지 못했습니다. 작업 DB 파일을 직접 불러오세요.", "warn");
   }
 }
-function loadBytes(bytes, label) {
+async function loadBytes(bytes, label) {
   if (db) db.close();
   db = new SQL.Database(bytes);
   const cols = rows("PRAGMA table_info(faq)").map(r => r.name);
   if (!cols.includes("publish_yn")) db.run("ALTER TABLE faq ADD COLUMN publish_yn TEXT NOT NULL DEFAULT 'Y'");
-  db.run("CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, who TEXT, action TEXT, tbl TEXT, key TEXT, descr TEXT)");
+  ensureSchema();
+  await seedIfEmpty();
+  accounts = readAccountsFromDb();
   dbLabel = label;
   msg("dbmsg", "DB를 불러왔습니다: " + label, "ok");
   renderAll();
@@ -455,7 +572,8 @@ function loadBytes(bytes, label) {
 function loadFile(file) {
   if (!file) return;
   if (!SQL) { msg("dbmsg", "준비 중입니다. 잠시 후 다시 선택하세요.", "warn"); return; }
-  file.arrayBuffer().then(b => loadBytes(new Uint8Array(b), file.name));
+  file.arrayBuffer().then(b => loadBytes(new Uint8Array(b), file.name))
+    .catch(e => msg("dbmsg", "DB 파일을 읽지 못했습니다: " + e.message, "err"));
 }
 
 /* ───── 로그인 · 비밀번호 ───── */
@@ -469,15 +587,28 @@ function loadRememberedId() {
 function showOnly(id) { ["login", "pwchg", "app"].forEach(x => $("#" + x).classList.toggle("hide", x !== id)); }
 async function login() {
   const id = $("#lid").value.trim(), pw = $("#lpw").value;
-  const a = accounts.find(x => x.loginId === id && x.active !== false);
-  if (!a) return msg("lmsg", "아이디 또는 비밀번호가 맞지 않습니다.", "err");
-  if (a.locked) return msg("lmsg", "잠긴 계정입니다. 최고관리자에게 잠금 해제를 요청하세요.", "err");
+  const a = accounts.find(x => x.loginId === id);
+  if (!a || a.active === false) {
+    accessLog("로그인", id, "실패 · 아이디 없음 또는 사용 중지"); persist();
+    return msg("lmsg", "아이디 또는 비밀번호가 맞지 않습니다.", "err");
+  }
+  if (a.locked) {
+    accessLog("로그인", id, "거부 · 잠긴 계정"); persist();
+    return msg("lmsg", "잠긴 계정입니다. 최고관리자에게 잠금 해제를 요청하세요.", "err");
+  }
   if (!(await checkPw(a, pw))) {
     a.failCount = (a.failCount || 0) + 1;
-    if (a.failCount >= MAX_FAIL) { a.locked = true; return msg("lmsg", `${MAX_FAIL}회 틀려 계정이 잠겼습니다. 최고관리자에게 잠금 해제를 요청하세요.`, "err"); }
+    if (a.failCount >= MAX_FAIL) a.locked = true;
+    writeAccount(a);
+    accessLog("로그인", id, "실패 (" + a.failCount + "/" + MAX_FAIL + (a.locked ? ", 잠금" : "") + ")");
+    persist();
+    if (a.locked) return msg("lmsg", `${MAX_FAIL}회 틀려 계정이 잠겼습니다. 최고관리자에게 잠금 해제를 요청하세요.`, "err");
     return msg("lmsg", `아이디 또는 비밀번호가 맞지 않습니다. (${a.failCount}/${MAX_FAIL})`, "err");
   }
   a.failCount = 0;
+  writeAccount(a);
+  accessLog("로그인", id, "성공" + (a.mustChange ? " · 비밀번호 변경 필요" : ""));
+  persist();
   rememberId($("#remember").checked, a.loginId);
   $("#lpw").value = ""; msg("lmsg", "");
   me = a;
@@ -509,15 +640,19 @@ async function changePw() {
   const errs = pwPolicy(n1, me.loginId);
   if (errs.length) return msg("pw_msg", "규칙에 맞지 않습니다.\n" + errs.map(x => "· " + x).join("\n"), "err");
   await setPassword(me, n1, false);
+  writeAccount(me, { touch: true, actor: me.loginId });
+  accessLog("비밀번호 변경", me.loginId, "성공");
+  persist();
   pwForced = false;
   enterApp();
-  msg("list_msg", "비밀번호를 변경했습니다.", "ok");
+  msg("dbmsg", "비밀번호를 변경했습니다. (DB에 저장됨)", "ok");
 }
 function cancelPw() {
   if (pwForced) return logout();
   showOnly("app");
 }
 function logout() {
+  if (me) { accessLog("로그아웃", me.loginId, "성공"); persist(); }
   me = null; closeFaq();
   $("#lpw").value = ""; msg("lmsg", "");
   showOnly("login");
@@ -735,6 +870,7 @@ function saveFaq() {
     db.run("ROLLBACK");
     return msg("e_msg", "저장 중 오류: " + e.message, "err");
   }
+  persist();
   closeFaq();
   renderFaqList();
   msg("list_msg", `${f.faq_id} 저장했습니다. (작업 DB 반영 · 챗봇 공개는 최고관리자가 공개용 DB를 받아 저장소에 올려야 완료됩니다)`, "ok");
@@ -793,6 +929,7 @@ function saveTable(k) {
     addLog("표 저장", c.table, data.length + "행", c.t + " 표 저장");
     db.run("COMMIT");
   } catch (e) { db.run("ROLLBACK"); return msg("m_" + k, "저장 중 오류: " + e.message, "err"); }
+  persist();
   renderTable(k);
   msg("m_" + k, "저장했습니다. (작업 DB 반영)", "ok");
 }
@@ -802,6 +939,7 @@ function renderAcc() {
   $("#atb").innerHTML = accounts.map((a, i) => {
     const locked = a.locked ? `<span class="tag r">잠김 (${a.failCount || 0}회)</span> <button class="btn" onclick="unlock(${i})">잠금 해제</button>` : "";
     const pwState = !a.pw ? `<span class="tag w">비밀번호 없음</span>` : a.mustChange ? `<span class="tag w">다음 로그인 때 변경</span>` : `<span class="tag">사용자가 설정</span>`;
+    const up = a.updated || {};
     return `<tr>
     <td><input class="w" data-a="${i}" data-f="loginId" value="${esc(a.loginId)}"></td>
     <td><input class="w" data-a="${i}" data-f="label" value="${esc(a.label)}"></td>
@@ -812,7 +950,8 @@ function renderAcc() {
     <td><select data-a="${i}" data-f="active"><option value="Y" ${a.active !== false ? "selected" : ""}>사용</option><option value="N" ${a.active === false ? "selected" : ""}>중지</option></select></td>
     <td><input type="password" class="w" data-a="${i}" data-f="pwnew" placeholder="변경할 때만 입력" autocomplete="new-password">
       <button class="btn" style="margin-top:4px" onclick="resetPw(${i})">기본값(sb111111)으로 초기화</button></td>
-    <td>${pwState}<div style="margin-top:4px">${locked}</div></td></tr>`; }).join("");
+    <td>${pwState}<div style="margin-top:4px">${locked}</div></td>
+    <td class="muted">${esc(up.by || "-")}</td><td class="muted">${esc(up.at || "-")}</td><td class="muted">${esc(up.ip || "-")}</td></tr>`; }).join("");
 }
 function readAcc() {
   return accounts.map((a, i) => {
@@ -858,9 +997,13 @@ async function saveAcc() {
   if (e.length) return msg("acc_msg", "저장할 수 없습니다.\n" + e.map(x => "· " + x).join("\n"), "err");
   accounts = next;
   for (const [i, np] of pending) await setPassword(accounts[i], np, true);
+  try {
+    syncAccounts(accounts);
+  } catch (err) { return msg("acc_msg", "DB 저장 중 오류: " + err.message, "err"); }
+  accessLog("권한 저장", me.loginId, "성공 · 계정 " + accounts.length + "개");
+  persist();
   renderAcc();
-  msg("acc_msg", "권한을 저장했습니다." + (pending.length ? " 새 임시 비밀번호는 다음 로그인 때 변경해야 합니다." : "") +
-    " 계정 파일은 '계정 파일 받기'로 내부에 보관하세요.", "ok");
+  msg("acc_msg", "권한을 저장했습니다. (DB에 기록됨)" + (pending.length ? " 새 임시 비밀번호는 다음 로그인 때 변경해야 합니다." : ""), "ok");
 }
 function exportAcc() {
   const data = JSON.stringify(readAcc().map(a => ({ id: a.id, loginId: a.loginId, label: a.label, role: a.role, center: a.center, active: a.active,
@@ -882,11 +1025,15 @@ function importAcc(file) {
 /* ───── 내보내기·이력 (최고관리자 전용) ───── */
 function renderOut() {
   const all = rows("SELECT publish_yn FROM faq");
-  $("#out_stat").textContent = `현재 작업 DB: ${dbLabel} · FAQ ${all.length}개 (게시 ${all.filter(f => f.publish_yn === "Y").length}개 / 비공개 ${all.filter(f => f.publish_yn !== "Y").length}개)`;
   $("#dbnow").textContent = dbLabel;
+  $("#out_stat").textContent = `현재 작업 DB: ${dbLabel} · FAQ ${all.length}개 (게시 ${all.filter(f => f.publish_yn === "Y").length}개 / 비공개 ${all.filter(f => f.publish_yn !== "Y").length}개)`;
+  $("#cachenote").textContent = localStorage.getItem(CACHE_KEY) ? "이 브라우저에 임시 저장본이 있습니다 (" + (localStorage.getItem(CACHE_KEY + "_at") || "") + "). 공개용 DB를 새로 적용하려면 '임시 저장본 삭제'를 누르세요." : "이 브라우저에 임시 저장본이 없습니다.";
   const logs = rows("SELECT * FROM admin_log ORDER BY id DESC LIMIT 200");
-  $("#ltb").innerHTML = logs.map(l => `<tr><td>${esc(l.at)}</td><td>${esc(l.who)}</td><td>${esc(l.action)}</td><td>${esc(l.tbl)}</td><td>${esc(l.key)}</td><td>${esc(l.descr)}</td></tr>`).join("")
-    || `<tr><td colspan="6" class="muted">변경 이력이 없습니다.</td></tr>`;
+  $("#ltb").innerHTML = logs.map(l => `<tr><td>${esc(l.at)}</td><td>${esc(l.who)}</td><td>${esc(l.action)}</td><td>${esc(l.tbl)}</td><td>${esc(l.key)}</td><td>${esc(l.descr)}</td><td class="muted">${esc(l.ip || "-")}</td><td class="muted">${esc(l.client || "-")}</td></tr>`).join("")
+    || `<tr><td colspan="8" class="muted">변경 이력이 없습니다.</td></tr>`;
+  const acc = rows("SELECT * FROM admin_access_log ORDER BY id DESC LIMIT 200");
+  $("#alog").innerHTML = acc.map(l => `<tr><td>${esc(l.at)}</td><td>${esc(l.login_id)}</td><td>${esc(l.action)}</td><td>${esc(l.result)}</td><td class="muted">${esc(l.ip || "-")}</td><td class="muted">${esc(l.client || "-")}</td></tr>`).join("")
+    || `<tr><td colspan="6" class="muted">접속 기록이 없습니다.</td></tr>`;
 }
 function downloadWork() {
   if (!isSuper()) return;
@@ -905,13 +1052,15 @@ function downloadPublic() {
     c.run("DELETE FROM faq WHERE publish_yn='N'");
     c.run("DELETE FROM menu_item WHERE faq_id NOT IN (SELECT faq_id FROM faq)");
     c.run("DROP TABLE IF EXISTS admin_log");
+    c.run("DROP TABLE IF EXISTS admin_account");
+    c.run("DROP TABLE IF EXISTS admin_access_log");
     c.run("ALTER TABLE faq DROP COLUMN publish_yn");
     const n = c.exec("SELECT COUNT(*) FROM faq")[0].values[0][0];
     c.run("UPDATE meta SET value=? WHERE key='generated_at'", [nowStamp()]);
     c.run("UPDATE meta SET value=? WHERE key='faq_count'", [String(n)]);
     c.run("COMMIT");
     download(c.export(), "chatbot.db");
-    msg("out_msg", `공개용 DB를 받았습니다 (게시 FAQ ${n}개). 받은 chatbot.db를 저장소 data 폴더에 덮어쓰고 Commit → Push 하세요.`, "ok");
+    msg("out_msg", `공개용 DB를 받았습니다 (게시 FAQ ${n}개). 계정·접속기록·변경 이력은 포함되지 않습니다. 받은 chatbot.db를 저장소 data 폴더에 덮어쓰고 Commit → Push 하세요.`, "ok");
   } catch (e) {
     c.run("ROLLBACK");
     msg("out_msg", "공개용 DB 만들기 실패: " + e.message, "err");
