@@ -19,10 +19,26 @@ nav button.on{color:var(--pri);border-bottom-color:var(--pri);font-weight:700}
 main{padding:20px;max-width:1200px;margin:0 auto}
 .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
 .card h2{font-size:16px;margin:0 0 10px}
-.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px}
-.stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px}
-.stat b{display:block;font-size:22px}
-.stat span{color:var(--mut);font-size:12px}
+.kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;cursor:pointer;border-top:4px solid var(--c,#2563EB);text-align:left;font:inherit;color:inherit}
+.kpi:hover{box-shadow:0 2px 10px rgba(17,24,39,.08)}
+.kpi b{display:block;font-size:26px;margin-top:4px}
+.kpi span{color:var(--mut);font-size:12px}
+.kpi em{display:block;font-style:normal;color:var(--pri);font-size:11px;margin-top:4px}
+.dash2{display:grid;gap:16px;grid-template-columns:1fr 1.4fr}
+@media (max-width:820px){.dash2{grid-template-columns:1fr}}
+.legend{list-style:none;padding:0;margin:10px 0 0}
+.legend li{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.legend a,.linkrow{cursor:pointer;color:var(--pri);text-decoration:underline}
+.brow{margin:10px 0;cursor:pointer}
+.brow .lab{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.brow:hover .lab b{color:var(--pri)}
+.bar{background:#EEF2F7;border-radius:6px;height:14px;overflow:hidden;position:relative}
+.bar i{display:block;height:100%}
+.catbar{display:grid;grid-template-columns:130px 1fr 40px;gap:8px;align-items:center;margin:7px 0;font-size:13px;cursor:pointer}
+.catbar:hover span{color:var(--pri)}
+.thr{position:absolute;top:-3px;bottom:-3px;width:2px;background:#DC2626}
 table{width:100%;border-collapse:collapse;background:#fff}
 th,td{border-bottom:1px solid var(--line);padding:7px;text-align:left;vertical-align:top}
 th{background:#F9FAFB;font-size:12px;color:var(--mut)}
@@ -41,6 +57,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:#EEF2FF;color:#3730A3;white-space:nowrap}
 .tag.n{background:#F3F4F6;color:#6B7280}
 .tag.w{background:var(--warnbg);color:var(--warn)}
+.tag.r{background:var(--errbg);color:var(--err)}
 .msg{padding:10px 12px;border-radius:8px;margin:8px 0;font-size:13px;white-space:pre-line}
 .msg.err{background:var(--errbg);color:var(--err)}
 .msg.warn{background:var(--warnbg);color:var(--warn)}
@@ -56,26 +73,56 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 </head>
 <body>
 
-<!-- 1. 로그인(계정 선택) 화면 -->
+<!-- 1. 로그인 -->
 <div id="login" class="card login">
   <h2>AI 쳇봇 관리자 화면</h2>
-  <div class="msg warn">시험용 화면입니다. 지금은 <b>계정을 골라 들어가는 방식</b>이라 실제 접근 통제가 아닙니다.
-실제 운영 전에 서버 로그인 또는 GitHub 저장소 권한으로 반드시 바꿔야 합니다.</div>
-  <label>계정 선택</label>
-  <select id="acc" class="w"></select>
+  <div class="msg warn">시험용 화면입니다. 이 화면의 잠금·비밀번호 확인은 브라우저 안에서만 동작하므로 <b>실제 접근 통제가 아닙니다.</b>
+운영 전에 서버 로그인 또는 GitHub 저장소 권한으로 반드시 바꿔야 합니다.</div>
+  <label>아이디</label>
+  <input id="lid" class="w" autocomplete="username" placeholder="예: super_admin">
+  <label>비밀번호</label>
+  <input id="lpw" type="password" class="w" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+  <div id="lmsg"></div>
   <div class="row" style="margin-top:12px"><button class="btn p" onclick="login()">들어가기</button></div>
+  <div class="muted">최초 비밀번호는 <b>sb111111</b>입니다. 처음 로그인하면 새 비밀번호를 정해야 들어갈 수 있습니다.</div>
   <div id="dbmsg"></div>
   <label>작업 DB 불러오기 (내부에 보관한 chatbot_work.db)</label>
   <input type="file" accept=".db" onchange="loadFile(this.files[0])">
   <div class="muted">공개용 data/chatbot.db는 자동으로 읽습니다. 작업 중이던 파일이 있으면 여기서 불러오세요.</div>
 </div>
 
-<!-- 2. 관리자 본 화면 (별도 화면) -->
+<!-- 2. 비밀번호 변경 (최초 로그인 · 임의 변경) -->
+<div id="pwchg" class="card login hide">
+  <h2 id="pw_title">비밀번호 변경</h2>
+  <div id="pw_intro" class="msg warn"></div>
+  <label>현재 비밀번호</label>
+  <input id="pw_cur" type="password" class="w" autocomplete="current-password">
+  <label>새 비밀번호</label>
+  <input id="pw_new" type="password" class="w" autocomplete="new-password">
+  <label>새 비밀번호 확인</label>
+  <input id="pw_new2" type="password" class="w" autocomplete="new-password">
+  <div class="msg" style="background:#F3F4F6;color:#374151">
+    <b>비밀번호 작성 규칙</b> (개인정보의 안전성 확보조치 기준 제6조 접근통제 및 해설서의 비밀번호 작성 규칙 — 조항 번호와 최신 개정 여부는 국가법령정보센터·개인정보보호위원회에서 확인 필요)
+    <ul style="margin:6px 0 0 16px;padding:0">
+      <li>영문 대문자·소문자·숫자·특수문자 중 <b>2종류 이상 조합 시 10자리 이상</b>, 또는 <b>3종류 이상 조합 시 8자리 이상</b></li>
+      <li>아이디를 포함할 수 없음 · 연속된 문자·숫자(abc, 123) 사용 불가 · 같은 문자 3번 이상 연속 사용 불가 · 공백 사용 불가</li>
+      <li>초기 비밀번호(sb111111)는 새 비밀번호로 쓸 수 없음</li>
+    </ul>
+  </div>
+  <div id="pw_msg"></div>
+  <div class="row">
+    <button class="btn p" onclick="changePw()">비밀번호 변경</button>
+    <button class="btn" onclick="cancelPw()" id="pw_cancel">취소</button>
+  </div>
+</div>
+
+<!-- 3. 관리자 본 화면 -->
 <div id="app" class="hide">
 <header>
   <h1>AI 쳇봇 관리자 <span style="opacity:.7;font-weight:400">(시험용)</span></h1>
   <span class="badge" id="who"></span>
   <a href="../index.html">챗봇 화면 보기</a>
+  <button class="btn" onclick="showPwChange(false)" style="font-size:12px">내 비밀번호 변경</button>
   <button class="btn" onclick="logout()" style="font-size:12px">나가기</button>
 </header>
 <nav>
@@ -84,7 +131,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
   <button data-v="disc" onclick="show('disc')">할인·감면</button>
   <button data-v="contact" class="superonly" onclick="show('contact')">센터·문의처</button>
   <button data-v="acc" class="superonly" onclick="show('acc')">관리자 권한</button>
-  <button data-v="out" onclick="show('out')">내보내기·이력</button>
+  <button data-v="out" class="superonly" onclick="show('out')">내보내기·이력</button>
 </nav>
 
 <main>
@@ -97,8 +144,10 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
       <div class="row">
         <input id="fq" placeholder="질문·답변 검색" oninput="renderFaqList()">
         <select id="fc" onchange="renderFaqList()"></select>
+        <select id="fk" onchange="renderFaqList()"></select>
         <select id="fs" onchange="renderFaqList()">
-          <option value="">상태 전체</option><option>확정</option><option>조건부</option><option>문의</option>
+          <option value="">상태 전체</option><option value="__need">확인 필요(조건부·문의)</option>
+          <option>확정</option><option>조건부</option><option>문의</option>
         </select>
         <select id="fp" onchange="renderFaqList()">
           <option value="">게시 전체</option><option value="Y">게시(Y)</option><option value="N">비공개(N)</option>
@@ -140,7 +189,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
         <button class="btn p" id="e_save" onclick="saveFaq()">저장</button>
         <button class="btn" onclick="closeFaq()">닫기</button>
       </div>
-      <div class="muted">저장은 작업 DB에 반영됩니다. 챗봇 공개는 '내보내기·이력' 탭에서 공개용 DB를 받아 저장소에 올려야 완료됩니다.</div>
+      <div class="muted">저장은 작업 DB에 반영됩니다. 챗봇 공개는 최고관리자가 '내보내기·이력'에서 공개용 DB를 받아 저장소에 올려야 완료됩니다.</div>
     </div>
   </section>
 
@@ -171,10 +220,11 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
   <section id="v-acc" class="hide">
     <div class="card">
       <h2>사업장 관리자 · 권한 관리</h2>
-      <div class="msg warn">계정 정보는 사람의 이름·연락처를 포함할 수 있는 개인정보입니다. 이 화면에서 내려받는 계정 파일은 <b>저장소에 올리지 말고 내부 보관</b>하세요. 지금 목록은 예시입니다.</div>
-      <div class="muted">권한 규칙: 최고관리자는 전체 FAQ·센터·문의처·계정을 관리합니다. 사업장 관리자는 자기 센터 FAQ와(공영주차센터인 경우) 할인·감면만 편집합니다.</div>
+      <div class="msg warn">계정 정보는 사람의 이름을 포함할 수 있는 개인정보입니다. 계정 파일은 <b>저장소에 올리지 말고 내부 보관</b>하세요. 지금 목록은 예시입니다.</div>
+      <div class="muted">권한: 최고관리자는 전체 FAQ·센터·문의처·계정·내보내기를 관리합니다. 사업장 관리자는 자기 센터 FAQ와(공영주차센터인 경우) 할인·감면을 편집합니다.</div>
+      <div class="muted" style="margin-top:4px">비밀번호: 새 값을 넣고 '권한 저장'하면 임시 비밀번호가 됩니다. 사용자는 다음 로그인 때 직접 바꿔야 합니다. '기본값으로 초기화'는 sb111111로 되돌립니다. 5회 틀리면 잠깁니다.</div>
       <div class="scroll"><table>
-        <thead><tr><th>표시 이름(직책)</th><th>역할</th><th>담당 센터</th><th>사용</th><th></th></tr></thead>
+        <thead><tr><th>아이디</th><th>표시 이름(직책)</th><th>역할</th><th>담당 센터</th><th>사용</th><th>임시 비밀번호 (변경 시만 입력)</th><th>상태</th></tr></thead>
         <tbody id="atb"></tbody>
       </table></div>
       <div class="row">
@@ -187,13 +237,13 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
     </div>
   </section>
 
-  <!-- 내보내기·이력 -->
+  <!-- 내보내기·이력 (최고관리자 전용) -->
   <section id="v-out" class="hide">
     <div class="card">
       <h2>작업 흐름</h2>
       <ol class="steps">
-        <li>사업장 관리자가 FAQ·할인 정보를 수정하고 <b>'작업용 DB 받기'</b>로 저장합니다. (내부 보관)</li>
-        <li>최고관리자가 해당 파일을 <b>'작업 DB 불러오기'</b>로 열어 내용을 검토합니다.</li>
+        <li>사업장 관리자가 FAQ·할인 정보를 수정합니다.</li>
+        <li>최고관리자가 작업 내용을 검토하고 <b>'작업용 DB 받기'</b>로 내부 보관합니다.</li>
         <li>최고관리자가 <b>'공개용 DB 받기'</b>를 누르면 게시(Y) 내용만 들어간 chatbot.db가 내려받아집니다.</li>
         <li>받은 chatbot.db를 저장소의 <code>data</code> 폴더에 덮어쓰고 GitHub Desktop에서 Commit → Push 합니다. 1~2분 뒤 챗봇에 반영됩니다.</li>
       </ol>
@@ -202,12 +252,10 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
       <h2>파일 받기</h2>
       <div class="row">
         <button class="btn" onclick="downloadWork()">작업용 DB 받기 (chatbot_work.db · 내부 보관)</button>
-        <button class="btn p superonly" onclick="downloadPublic()">공개용 DB 받기 (chatbot.db · 저장소용)</button>
+        <button class="btn p" onclick="downloadPublic()">공개용 DB 받기 (chatbot.db · 저장소용)</button>
       </div>
       <div id="out_msg"></div>
       <div class="muted" id="out_stat"></div>
-      <label>작업 DB 불러오기</label>
-      <input type="file" accept=".db" onchange="loadFile(this.files[0])">
     </div>
     <div class="card">
       <h2>변경 이력 (최근 200건)</h2>
@@ -228,6 +276,9 @@ const CENTERS = ["공통", "거주자주차센터", "공영주차센터", "견�
 const CATS    = ["운영시간", "요금", "할인·감면", "월정기", "이용제한", "견인·방치", "주차장 현황", "거주자주차", "기타"];
 const STATUS  = ["확정", "조건부", "문의"];
 const LOTS    = ["노상", "노외", "부설"];
+const DEFAULT_PW = "sb111111";          // 최초·초기화 비밀번호 (최초 로그인 때 변경 필수)
+const PBKDF_ITER = 200000;
+const MAX_FAIL = 5;
 // 개인정보 형식 차단 (챗봇은 개인정보를 받지 않는 원칙)
 const PII = [
   { re: /\d{2,3}\s?[가-힣]\s?\d{4}/, name: "차량번호 형식" },
@@ -235,28 +286,25 @@ const PII = [
   { re: /01[016789]-?\d{3,4}-?\d{4}/, name: "휴대전화번호 형식" },
   { re: /[\w.+-]+@[\w-]+\.[\w.]+/,   name: "이메일 형식" }
 ];
-// 표(표 형태 테이블) 설정
+// 표 형태 편집 설정
 const TB = {
   discount: { t: "할인·감면 유형", table: "discount", cols: ["type", "rate", "proof"],
-    labels: ["유형", "할인율(표기)", "확인 방법"], req: ["type", "proof"], phone: [],
-    perm: () => canDisc() },
+    labels: ["유형", "할인율(표기)", "확인 방법"], req: ["type", "proof"], phone: [], perm: () => canDisc() },
   center: { t: "사업장(센터)", table: "center", cols: ["name", "phone", "hours", "scope"],
-    labels: ["센터", "연락처", "운영시간", "담당 범위"], req: ["name", "scope"], phone: ["phone"],
-    perm: () => isSuper() },
+    labels: ["센터", "연락처", "운영시간", "담당 범위"], req: ["name", "scope"], phone: ["phone"], perm: () => isSuper() },
   contact: { t: "문의처", table: "contact", cols: ["name", "phone", "hours", "purpose"],
-    labels: ["구분", "연락처", "운영시간", "안내 용도"], req: ["name", "phone", "hours", "purpose"], phone: ["phone"],
-    perm: () => isSuper() }
+    labels: ["구분", "연락처", "운영시간", "안내 용도"], req: ["name", "phone", "hours", "purpose"], phone: ["phone"], perm: () => isSuper() }
 };
 
 /* ───── 상태 ───── */
 let SQL = null, db = null, dbLabel = "";
-let me = null, cur = "dash", editingId = null;
-// 계정 목록 (예시). 실제 이름·연락처는 넣지 않습니다.
+let me = null, cur = "dash", editingId = null, pwForced = false;
+// 계정 (예시). 실제 이름·연락처는 넣지 않습니다. 비밀번호는 PBKDF2 해시로만 보관합니다.
 let accounts = [
-  { id: "A1", label: "최고관리자 (예시)", role: "super", center: "", active: true },
-  { id: "A2", label: "공영주차센터 담당자 (예시)", role: "center", center: "공영주차센터", active: true },
-  { id: "A3", label: "거주자주차센터 담당자 (예시)", role: "center", center: "거주자주차센터", active: true },
-  { id: "A4", label: "견인주차센터 담당자 (예시)", role: "center", center: "견인주차센터", active: true }
+  { id: "A1", loginId: "super_admin",      label: "최고관리자 (예시)",           role: "super",  center: "",               active: true },
+  { id: "A2", loginId: "parking_gong",     label: "공영주차센터 담당자 (예시)",   role: "center", center: "공영주차센터",   active: true },
+  { id: "A3", loginId: "parking_resident", label: "거주자주차센터 담당자 (예시)", role: "center", center: "거주자주차센터", active: true },
+  { id: "A4", loginId: "parking_tow",      label: "견인주차센터 담당자 (예시)",   role: "center", center: "견인주차센터",   active: true }
 ];
 
 /* ───── 공통 도우미 ───── */
@@ -266,9 +314,9 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const isSuper = () => !!me && me.role === "super";
 const canFaq = center => isSuper() || (!!me && me.center === center);
 const canDisc = () => isSuper() || (!!me && me.center === "공영주차센터");
-const nowStamp = () => { const d = new Date(), p = n => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
-const todayYM = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}`; };
+const pad = n => String(n).padStart(2, "0");
+const nowStamp = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const todayYM = () => { const d = new Date(); return `${d.getFullYear()}.${pad(d.getMonth() + 1)}`; };
 
 function rows(sql, params) {
   const st = db.prepare(sql); if (params) st.bind(params);
@@ -281,8 +329,8 @@ function piiCheck(label, text) {
   PII.forEach(p => { if (p.re.test(text)) out.push(`${label}: ${p.name}처럼 보이는 내용이 있습니다. 개인정보(차량번호·전화번호·이메일 등)는 넣을 수 없습니다.`); });
   return out;
 }
-function download(bytes, name) {
-  const url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
+function download(bytes, name, type) {
+  const url = URL.createObjectURL(new Blob([bytes], { type: type || "application/octet-stream" }));
   const a = document.createElement("a"); a.href = url; a.download = name;
   document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
@@ -292,17 +340,59 @@ function addLog(action, tbl, key, descr) {
     [nowStamp(), me ? me.label : "", action, tbl, key, descr]);
 }
 
+/* ───── 비밀번호 (PBKDF2-SHA256, 브라우저 내장 암호 기능 사용) ───── */
+const bytesToHex = b => [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+const hexToBytes = h => Uint8Array.from(h.match(/../g).map(x => parseInt(x, 16)));
+function hashPw(pw, saltHex, iter) {
+  const enc = new TextEncoder();
+  return crypto.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveBits"])
+    .then(key => crypto.subtle.deriveBits({ name: "PBKDF2", salt: hexToBytes(saltHex), iterations: iter || PBKDF_ITER, hash: "SHA-256" }, key, 256))
+    .then(bits => bytesToHex(new Uint8Array(bits)));
+}
+async function setPassword(a, pw, mustChange) {
+  const salt = bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
+  a.pw = { salt, hash: await hashPw(pw, salt), iter: PBKDF_ITER, algo: "PBKDF2-SHA256" };
+  a.mustChange = !!mustChange; a.failCount = 0; a.locked = false;
+  return a;
+}
+async function checkPw(a, pw) {
+  if (!a || !a.pw) return false;
+  return (await hashPw(pw, a.pw.salt, a.pw.iter)) === a.pw.hash;
+}
+function hasSeq(pw) {
+  const s = pw.toLowerCase();
+  for (let i = 0; i < s.length - 2; i++) {
+    const a = s.charCodeAt(i), b = s.charCodeAt(i + 1), c = s.charCodeAt(i + 2);
+    if ((b === a + 1 && c === b + 1) || (b === a - 1 && c === b - 1)) return true;
+  }
+  return false;
+}
+// 작성 규칙 검사 (개인정보의 안전성 확보조치 기준 제6조 해설서 기준, 조항 최신 여부 확인 필요)
+function pwPolicy(pw, loginId) {
+  const e = [];
+  const kinds = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^A-Za-z0-9\s]/].filter(r => r.test(pw)).length;
+  const len = [...pw].length;
+  if (/\s/.test(pw)) e.push("공백은 쓸 수 없습니다.");
+  if (!((len >= 10 && kinds >= 2) || (len >= 8 && kinds >= 3)))
+    e.push("영문 대문자·소문자·숫자·특수문자 중 2종류 이상이면 10자리 이상, 3종류 이상이면 8자리 이상이어야 합니다.");
+  if (/(.)\1\1/.test(pw)) e.push("같은 문자를 3번 이상 연속해서 쓸 수 없습니다.");
+  if (hasSeq(pw)) e.push("연속된 문자·숫자(예: abc, 123)는 쓸 수 없습니다.");
+  if (loginId && pw.toLowerCase().includes(loginId.toLowerCase())) e.push("아이디를 포함할 수 없습니다.");
+  if (pw === DEFAULT_PW) e.push("초기 비밀번호(sb111111)와 다른 값을 쓰세요.");
+  return e;
+}
+
 /* ───── DB 읽기 ───── */
 async function init() {
   SQL = await initSqlJs({ locateFile: f => "../vendor/" + f });
+  for (const a of accounts) await setPassword(a, DEFAULT_PW, true);
   try {
     const r = await fetch("../data/chatbot.db?t=" + Date.now());
     if (!r.ok) throw new Error(r.status);
     loadBytes(new Uint8Array(await r.arrayBuffer()), "공개 DB (data/chatbot.db)");
   } catch (e) {
-    msg("dbmsg", "공개 DB를 자동으로 읽지 못했습니다. 아래에서 작업 DB 파일을 직접 불러오세요.", "warn");
+    msg("dbmsg", "공개 DB를 자동으로 읽지 못했습니다. 작업 DB 파일을 직접 불러오세요.", "warn");
   }
-  renderAccountOptions();
 }
 function loadBytes(bytes, label) {
   if (db) db.close();
@@ -320,33 +410,68 @@ function loadFile(file) {
   file.arrayBuffer().then(b => loadBytes(new Uint8Array(b), file.name));
 }
 
-/* ───── 로그인 ───── */
-function renderAccountOptions() {
-  $("#acc").innerHTML = accounts.filter(a => a.active !== false).map(a =>
-    `<option value="${esc(a.id)}">${esc(a.label)} · ${a.role === "super" ? "최고관리자" : "사업장 관리자(" + esc(a.center) + ")"}</option>`).join("");
-}
-function login() {
-  const a = accounts.find(x => x.id === $("#acc").value);
-  if (!a) return;
+/* ───── 로그인 · 비밀번호 ───── */
+function showOnly(id) { ["login", "pwchg", "app"].forEach(x => $("#" + x).classList.toggle("hide", x !== id)); }
+async function login() {
+  const id = $("#lid").value.trim(), pw = $("#lpw").value;
+  const a = accounts.find(x => x.loginId === id && x.active !== false);
+  if (!a) return msg("lmsg", "아이디 또는 비밀번호가 맞지 않습니다.", "err");
+  if (a.locked) return msg("lmsg", "잠긴 계정입니다. 최고관리자에게 잠금 해제를 요청하세요.", "err");
+  if (!(await checkPw(a, pw))) {
+    a.failCount = (a.failCount || 0) + 1;
+    if (a.failCount >= MAX_FAIL) { a.locked = true; return msg("lmsg", `${MAX_FAIL}회 틀려 계정이 잠겼습니다. 최고관리자에게 잠금 해제를 요청하세요.`, "err"); }
+    return msg("lmsg", `아이디 또는 비밀번호가 맞지 않습니다. (${a.failCount}/${MAX_FAIL})`, "err");
+  }
+  a.failCount = 0;
+  $("#lpw").value = ""; msg("lmsg", "");
   me = a;
-  $("#login").classList.add("hide");
-  $("#app").classList.remove("hide");
-  $("#who").textContent = a.role === "super" ? "최고관리자" : "사업장 관리자 · " + a.center;
-  $$(".superonly").forEach(el => el.classList.toggle("hide", a.role !== "super"));
+  if (a.mustChange) return showPwChange(true);
+  enterApp();
+}
+function enterApp() {
+  showOnly("app");
+  $("#who").textContent = (me.role === "super" ? "최고관리자" : "사업장 관리자 · " + me.center) + " (" + me.loginId + ")";
+  $$(".superonly").forEach(el => el.classList.toggle("hide", me.role !== "super"));
   show("dash");
+}
+function showPwChange(forced) {
+  if (!me) return;
+  pwForced = forced;
+  $("#pw_title").textContent = forced ? "최초 로그인 · 새 비밀번호 설정" : "비밀번호 변경";
+  $("#pw_intro").textContent = forced ? "초기 비밀번호로 로그인했습니다. 새 비밀번호를 정해야 사용할 수 있습니다." : "현재 비밀번호를 확인한 뒤 새 비밀번호를 정하세요.";
+  $("#pw_intro").classList.toggle("hide", !forced);
+  ["pw_cur", "pw_new", "pw_new2"].forEach(i => $("#" + i).value = "");
+  msg("pw_msg", "");
+  $("#pw_cancel").textContent = forced ? "로그인 화면으로" : "돌아가기";
+  showOnly("pwchg");
+}
+async function changePw() {
+  const cur = $("#pw_cur").value, n1 = $("#pw_new").value, n2 = $("#pw_new2").value;
+  if (!(await checkPw(me, cur))) return msg("pw_msg", "현재 비밀번호가 맞지 않습니다.", "err");
+  if (n1 !== n2) return msg("pw_msg", "새 비밀번호 두 칸이 서로 다릅니다.", "err");
+  if (await checkPw(me, n1)) return msg("pw_msg", "현재 비밀번호와 다른 값을 쓰세요.", "err");
+  const errs = pwPolicy(n1, me.loginId);
+  if (errs.length) return msg("pw_msg", "규칙에 맞지 않습니다.\n" + errs.map(x => "· " + x).join("\n"), "err");
+  await setPassword(me, n1, false);
+  pwForced = false;
+  enterApp();
+  msg("list_msg", "비밀번호를 변경했습니다.", "ok");
+}
+function cancelPw() {
+  if (pwForced) return logout();
+  showOnly("app");
 }
 function logout() {
   me = null; closeFaq();
-  $("#app").classList.add("hide");
-  $("#login").classList.remove("hide");
-  renderAccountOptions();
+  $("#lpw").value = ""; msg("lmsg", "");
+  showOnly("login");
 }
-function renderAll() { if (me) show(cur); }
+function renderAll() { if (me && !$("#app").classList.contains("hide")) show(cur); }
 
 /* ───── 화면 전환 ───── */
 function show(v) {
   if (!me) return;
-  if ((v === "acc" || v === "contact") && !isSuper()) v = "dash";
+  if ((v === "acc" || v === "contact" || v === "out") && !isSuper()) v = "dash";
   cur = v;
   ["dash", "faq", "disc", "contact", "acc", "out"].forEach(x => $("#v-" + x).classList.toggle("hide", x !== v));
   $$("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
@@ -359,61 +484,104 @@ function show(v) {
   if (v === "out") renderOut();
 }
 
-/* ───── 대시보드 ───── */
+/* ───── 대시보드 (그래프 + 바로가기) ───── */
+function donut(parts) {
+  const total = parts.reduce((a, b) => a + b.v, 0);
+  const R = 40, C = 2 * Math.PI * R; let off = 0;
+  const segs = total ? parts.filter(p => p.v > 0).map(p => {
+    const len = p.v / total * C;
+    const s = `<circle r="${R}" cx="60" cy="60" fill="none" stroke="${p.color}" stroke-width="18" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" transform="rotate(-90 60 60)"><title>${p.label} ${p.v}개</title></circle>`;
+    off += len; return s;
+  }).join("") : `<circle r="${R}" cx="60" cy="60" fill="none" stroke="#E5E7EB" stroke-width="18"/>`;
+  return `<svg viewBox="0 0 120 120" width="150" height="150">${segs}
+    <text x="60" y="58" text-anchor="middle" font-size="20" font-weight="700" fill="#111827">${total}</text>
+    <text x="60" y="76" text-anchor="middle" font-size="10" fill="#6B7280">전체 FAQ</text></svg>`;
+}
+function goFaq(o) {
+  show("faq");
+  $("#fq").value = "";
+  $("#fc").value = o.center || "";
+  $("#fk").value = o.category || "";
+  $("#fs").value = o.status || "";
+  $("#fp").value = o.pub || "";
+  renderFaqList();
+  $("#v-faq").scrollIntoView({ behavior: "smooth" });
+}
 function renderDash() {
   const all = rows("SELECT faq_id, center, category, status, publish_yn FROM faq");
   const scope = isSuper() ? all : all.filter(f => f.center === me.center);
-  const pub = scope.filter(f => f.publish_yn === "Y").length;
-  const chk = scope.filter(f => f.status !== "확정").length;
-  const centers = (isSuper() ? CENTERS : [me.center]).map(c => {
-    const xs = all.filter(f => f.center === c);
-    return `<tr><td>${esc(c)}</td><td>${xs.length}</td><td>${xs.filter(f => f.publish_yn === "Y").length}</td><td>${xs.filter(f => f.status !== "확정").length}</td></tr>`;
-  }).join("");
-  const cats = CATS.map(c => {
-    const n = all.filter(f => f.category === c && f.publish_yn === "Y").length;
-    const low = n < 3 ? `<span class="tag w">보강 필요(3개 미만)</span>` : `<span class="tag">충분</span>`;
-    return `<tr><td>${esc(c)}</td><td>${n}</td><td>${low}</td></tr>`;
-  }).join("");
-  const logs = rows("SELECT * FROM admin_log ORDER BY id DESC LIMIT 5").map(l =>
-    `<tr><td>${esc(l.at)}</td><td>${esc(l.who)}</td><td>${esc(l.action)} · ${esc(l.key)}</td></tr>`).join("") || `<tr><td colspan="3" class="muted">변경 이력이 없습니다.</td></tr>`;
-  $("#dash").innerHTML = `
-    <div class="grid">
-      <div class="stat"><span>내 담당 FAQ</span><b>${scope.length}</b></div>
-      <div class="stat"><span>게시(Y)</span><b>${pub}</b></div>
-      <div class="stat"><span>비공개(N)</span><b>${scope.length - pub}</b></div>
-      <div class="stat"><span>확인 필요 (조건부·문의)</span><b>${chk}</b></div>
-    </div>
-    <div class="two">
-      <div class="card"><h2>센터별 현황</h2><div class="scroll"><table>
-        <thead><tr><th>센터</th><th>전체</th><th>게시</th><th>확인 필요</th></tr></thead><tbody>${centers}</tbody></table></div></div>
-      <div class="card"><h2>분류별 게시 개수 (챗봇 기준)</h2><div class="scroll"><table>
-        <thead><tr><th>분류</th><th>게시 FAQ</th><th>상태</th></tr></thead><tbody>${cats}</tbody></table></div>
-        <div class="muted" style="margin-top:6px">거주자주차·견인·방치 분류는 3개 미만이면 보강이 필요합니다.</div></div>
-    </div>
-    <div class="card"><h2>최근 변경</h2><div class="scroll"><table>
-      <thead><tr><th>시각</th><th>담당</th><th>작업</th></tr></thead><tbody>${logs}</tbody></table></div></div>
+  const total = scope.length, pub = scope.filter(f => f.publish_yn === "Y").length, hid = total - pub;
+  const n = st => scope.filter(f => f.status === st).length;
+  const cf = n("확정"), cond = n("조건부"), ask = n("문의"), need = cond + ask;
+  const C_CONF = "#10B981", C_COND = "#F59E0B", C_ASK = "#EF4444";
+  const kpi = (label, v, color, o, hint) => `<button class="kpi" style="--c:${color}" onclick='goFaq(${JSON.stringify(o)})'>
+      <span>${label}</span><b>${v}</b><em>${hint || "목록 보기 →"}</em></button>`;
+  const kpis = `<div class="kpis">
+    ${kpi("전체 FAQ", total, "#2563EB", {})}
+    ${kpi("게시 중 (챗봇 공개)", pub, "#10B981", { pub: "Y" })}
+    ${kpi("비공개", hid, "#9CA3AF", { pub: "N" })}
+    ${kpi("확인 필요 (조건부+문의)", need, "#EF4444", { status: "__need" }, need ? "확인하러 가기 →" : "없음")}
+    ${kpi("조건부", cond, "#F59E0B", { status: "조건부" })}
+    ${kpi("문의", ask, "#EF4444", { status: "문의" })}
+  </div>`;
+  const legend = [["확정", cf, C_CONF], ["조건부", cond, C_COND], ["문의", ask, C_ASK]];
+  const statusCard = `<div class="card"><h2>상태별 비율</h2>
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">${donut(legend.map(([l, v, c]) => ({ label: l, v, color: c })))}
+    <ul class="legend" style="flex:1;min-width:160px">
+      ${legend.map(([l, v, c]) => `<li><i style="background:${c}"></i><span style="flex:1">${l}</span><b>${v}</b>
+        ${l === "확정" ? "" : `<a class="linkrow" onclick='goFaq(${JSON.stringify({ status: l })})'>보기</a>`}</li>`).join("")}
+    </ul></div>
+    <div class="muted" style="margin-top:8px">확정 외 상태는 담당자 확인이 필요합니다. '보기'를 누르면 해당 FAQ 목록으로 이동합니다.</div></div>`;
+  const cList = isSuper() ? CENTERS : [me.center];
+  const cMax = Math.max(1, ...cList.map(c => all.filter(f => f.center === c).length));
+  const centerCard = `<div class="card"><h2>센터별 FAQ 현황</h2>
+    ${cList.map(c => {
+      const xs = all.filter(f => f.center === c), p = xs.filter(f => f.publish_yn === "Y").length;
+      const nd = xs.filter(f => f.status !== "확정").length;
+      return `<div class="brow" onclick='goFaq(${JSON.stringify({ center: c })})'>
+        <div class="lab"><b>${esc(c)}</b><span>${xs.length}개 · 게시 ${p} · <span style="color:${nd ? "#B45309" : "#6B7280"}">확인 필요 ${nd}</span></span></div>
+        <div class="bar"><i style="width:${xs.length / cMax * 100}%;background:#BFDBFE"></i></div>
+        <div class="bar" style="margin-top:4px"><i style="width:${p / cMax * 100}%;background:#2563EB"></i></div>
+      </div>`; }).join("")}
+    <div class="muted" style="margin-top:6px">연한 막대 = 전체, 진한 막대 = 게시(챗봇 공개). 센터를 누르면 목록으로 이동합니다.</div></div>`;
+  const catCounts = CATS.map(c => scope.filter(f => f.category === c && f.publish_yn === "Y").length);
+  const catMax = Math.max(10, ...catCounts);
+  const catCard = `<div class="card"><h2>분류별 게시 FAQ (챗봇 공개 기준)</h2>
+    ${CATS.map((c, idx) => {
+      const k = catCounts[idx];
+      const pct = k / catMax * 100, thr = 3 / catMax * 100;
+      const low = k < 3;
+      return `<div class="catbar" onclick='goFaq(${JSON.stringify({ category: c })})'>
+        <span>${esc(c)}</span>
+        <div class="bar"><i style="width:${pct}%;background:${low ? "#F59E0B" : "#10B981"}"></i><div class="thr" style="left:${thr}%"></div></div>
+        <b>${k}</b></div>`; }).join("")}
+    <div class="muted" style="margin-top:8px">빨간 세로선은 3개 기준선입니다. 노란 막대(3개 미만)는 답변 보강이 필요합니다. 분류를 누르면 목록으로 이동합니다.</div></div>`;
+  $("#dash").innerHTML = `${kpis}<div class="dash2">${statusCard}${centerCard}</div>${catCard}
     <div class="muted">현재 DB: ${esc(dbLabel)}</div>`;
 }
 
 /* ───── FAQ 관리 ───── */
 function renderFaqFilters() {
-  const fc = $("#fc"), keep = fc.value;
-  fc.innerHTML = `<option value="">센터 전체</option>` + CENTERS.map(c => `<option>${c}</option>`).join("");
-  fc.value = keep;
+  const keep = { c: $("#fc").value, k: $("#fk").value };
+  $("#fc").innerHTML = `<option value="">센터 전체</option>` + CENTERS.map(c => `<option>${c}</option>`).join("");
+  $("#fk").innerHTML = `<option value="">분류 전체</option>` + CATS.map(c => `<option>${c}</option>`).join("");
+  $("#fc").value = keep.c; $("#fk").value = keep.k;
   renderFaqList();
 }
 function renderFaqList() {
   if (!db) return;
-  const q = $("#fq").value.trim(), fc = $("#fc").value, fs = $("#fs").value, fp = $("#fp").value;
+  const q = $("#fq").value.trim(), fc = $("#fc").value, fk = $("#fk").value, fs = $("#fs").value, fp = $("#fp").value;
   const list = rows("SELECT * FROM faq ORDER BY faq_id").filter(f =>
-    (!fc || f.center === fc) && (!fs || f.status === fs) && (!fp || f.publish_yn === fp) &&
-    (!q || (f.question + " " + f.answer).includes(q)));
+    (!fc || f.center === fc) && (!fk || f.category === fk) &&
+    (!fs || (fs === "__need" ? f.status !== "확정" : f.status === fs)) &&
+    (!fp || f.publish_yn === fp) && (!q || (f.question + " " + f.answer).includes(q)));
   $("#fcount").textContent = list.length + "건";
   $("#ftb").innerHTML = list.map(f => `<tr class="click" data-id="${esc(f.faq_id)}">
     <td>${esc(f.faq_id)}</td><td>${esc(f.center)}</td><td>${esc(f.category)}</td><td>${esc(f.question)}</td>
     <td>${esc(f.status)}</td>
     <td>${f.publish_yn === "Y" ? '<span class="tag">게시</span>' : '<span class="tag n">비공개</span>'}</td>
-    <td>${canFaq(f.center) ? "수정" : "조회"}</td></tr>`).join("");
+    <td>${canFaq(f.center) ? "수정" : "조회"}</td></tr>`).join("")
+    || `<tr><td colspan="7" class="muted">조건에 맞는 FAQ가 없습니다.</td></tr>`;
 }
 function pickFaq(e) { const tr = e.target.closest("tr[data-id]"); if (tr) openFaq(tr.dataset.id); }
 function nextId() {
@@ -513,7 +681,7 @@ function saveFaq() {
   }
   closeFaq();
   renderFaqList();
-  msg("list_msg", `${f.faq_id} 저장했습니다. (작업 DB 반영 · 챗봇 공개는 '내보내기·이력'에서 공개용 DB를 받아 저장소에 올려야 완료됩니다)`, "ok");
+  msg("list_msg", `${f.faq_id} 저장했습니다. (작업 DB 반영 · 챗봇 공개는 최고관리자가 공개용 DB를 받아 저장소에 올려야 완료됩니다)`, "ok");
 }
 
 /* ───── 표 편집 (할인·감면 / 센터 / 문의처) ───── */
@@ -527,7 +695,7 @@ function renderTable(k, data) {
     <tbody>${data.map((r, i) => `<tr>${c.cols.map(col => `<td><input class="w" data-k="${k}" data-i="${i}" data-c="${col}" value="${esc(r[col] ?? "")}" ${ro ? "disabled" : ""}></td>`).join("")}
       <td>${ro ? "" : `<button class="btn d" onclick="delRow('${k}',${i})">삭제</button>`}</td></tr>`).join("")}</tbody>
   </table></div>
-  <div class="row">${ro ? '<span class="muted">이 표는 최고관리자만 수정할 수 있습니다.</span>' : ""}${ro ? "" :
+  <div class="row">${ro ? '<span class="muted">이 표는 최고관리자만 수정할 수 있습니다.</span>' :
     `<button class="btn" onclick="addRow('${k}')">+ 행 추가</button><button class="btn p" onclick="saveTable('${k}')">저장</button>`}</div>
   <div id="m_${k}"></div>`;
 }
@@ -548,8 +716,7 @@ function validateTable(k, data) {
     const no = i + 1;
     c.req.forEach(col => { if (!r[col]) e.push(`${no}행: 「${c.labels[c.cols.indexOf(col)]}」을(를) 입력하세요.`); });
     c.phone.forEach(col => {
-      if (!r[col]) return;
-      if (!/^0\d{1,2}-\d{3,4}-\d{4}$/.test(r[col])) e.push(`${no}행: 연락처는 02-000-0000 형식으로 입력하세요.`);
+      if (r[col] && !/^0\d{1,2}-\d{3,4}-\d{4}$/.test(r[col])) e.push(`${no}행: 연락처는 02-000-0000 형식으로 입력하세요.`);
     });
     c.cols.filter(col => !c.phone.includes(col)).forEach(col =>
       e.push(...piiCheck(`${no}행 ${c.labels[c.cols.indexOf(col)]}`, r[col])));
@@ -576,64 +743,96 @@ function saveTable(k) {
 
 /* ───── 관리자 권한 (최고관리자) ───── */
 function renderAcc() {
-  $("#atb").innerHTML = accounts.map((a, i) => `<tr>
+  $("#atb").innerHTML = accounts.map((a, i) => {
+    const locked = a.locked ? `<span class="tag r">잠김 (${a.failCount || 0}회)</span> <button class="btn" onclick="unlock(${i})">잠금 해제</button>` : "";
+    const pwState = !a.pw ? `<span class="tag w">비밀번호 없음</span>` : a.mustChange ? `<span class="tag w">다음 로그인 때 변경</span>` : `<span class="tag">사용자가 설정</span>`;
+    return `<tr>
+    <td><input class="w" data-a="${i}" data-f="loginId" value="${esc(a.loginId)}"></td>
     <td><input class="w" data-a="${i}" data-f="label" value="${esc(a.label)}"></td>
     <td><select data-a="${i}" data-f="role">
       <option value="super" ${a.role === "super" ? "selected" : ""}>최고관리자</option>
       <option value="center" ${a.role === "center" ? "selected" : ""}>사업장 관리자</option></select></td>
     <td><select data-a="${i}" data-f="center"><option value="">(없음)</option>${CENTERS.map(c => `<option ${a.center === c ? "selected" : ""}>${c}</option>`).join("")}</select></td>
     <td><select data-a="${i}" data-f="active"><option value="Y" ${a.active !== false ? "selected" : ""}>사용</option><option value="N" ${a.active === false ? "selected" : ""}>중지</option></select></td>
-    <td><button class="btn d" onclick="delAcc(${i})">삭제</button></td></tr>`).join("");
+    <td><input type="password" class="w" data-a="${i}" data-f="pwnew" placeholder="변경할 때만 입력" autocomplete="new-password">
+      <button class="btn" style="margin-top:4px" onclick="resetPw(${i})">기본값(sb111111)으로 초기화</button></td>
+    <td>${pwState}<div style="margin-top:4px">${locked}</div></td></tr>`; }).join("");
 }
 function readAcc() {
   return accounts.map((a, i) => {
     const g = f => document.querySelector(`[data-a="${i}"][data-f="${f}"]`).value;
-    return { id: a.id, label: g("label").trim(), role: g("role"), center: g("center"), active: g("active") === "Y" };
+    return { ...a, loginId: g("loginId").trim(), label: g("label").trim(), role: g("role"), center: g("center"), active: g("active") === "Y" };
   });
 }
-function addAcc() { accounts = readAcc(); accounts.push({ id: "A" + Date.now().toString(36), label: "새 담당자 (직책 입력)", role: "center", center: "공영주차센터", active: true }); renderAcc(); }
+async function resetPw(i) {
+  accounts = readAcc();
+  await setPassword(accounts[i], DEFAULT_PW, true);
+  renderAcc();
+  msg("acc_msg", `${accounts[i].loginId} 계정을 초기 비밀번호(sb111111)로 되돌렸습니다. 저장하려면 '권한 저장'을 누르세요. 다음 로그인 때 새 비밀번호를 정해야 합니다.`, "warn");
+}
+function unlock(i) {
+  accounts = readAcc();
+  accounts[i].locked = false; accounts[i].failCount = 0;
+  renderAcc();
+  msg("acc_msg", `${accounts[i].loginId} 계정의 잠금을 풀었습니다. '권한 저장'을 눌러야 반영됩니다.`, "ok");
+}
+function addAcc() {
+  accounts = readAcc();
+  accounts.push({ id: "A" + Date.now().toString(36), loginId: "", label: "새 담당자 (직책 입력)", role: "center", center: "공영주차센터", active: true });
+  renderAcc();
+}
 function delAcc(i) { accounts = readAcc(); accounts.splice(i, 1); renderAcc(); }
-function saveAcc() {
-  const next = readAcc(), e = [];
+async function saveAcc() {
+  const next = readAcc(), e = [], pending = [], ids = new Set();
   next.forEach((a, i) => {
+    if (!/^[a-z0-9_]{4,20}$/.test(a.loginId)) e.push(`${i + 1}번: 아이디는 영문 소문자·숫자·_ 4~20자로 입력하세요.`);
+    else if (ids.has(a.loginId)) e.push(`${i + 1}번: 중복된 아이디입니다.`); else ids.add(a.loginId);
     if (!a.label) e.push(`${i + 1}번: 표시 이름을 입력하세요.`);
     if (a.role === "center" && !a.center) e.push(`${i + 1}번: 사업장 관리자는 담당 센터를 골라야 합니다.`);
     if (a.role === "super") a.center = "";
+    const np = document.querySelector(`[data-a="${i}"][data-f="pwnew"]`).value;
+    if (np) {
+      const pe = pwPolicy(np, a.loginId);
+      if (pe.length) e.push(`${i + 1}번 ${a.loginId} 비밀번호: ${pe.join(" ")}`);
+      else pending.push([i, np]);
+    }
+    if (!a.pw && !np) e.push(`${i + 1}번 ${a.loginId || ""}: 비밀번호가 없습니다. 임시 비밀번호를 입력하거나 초기화하세요.`);
   });
   if (!next.some(a => a.role === "super" && a.active)) e.push("사용 중인 최고관리자가 최소 1명 있어야 합니다.");
   if (e.length) return msg("acc_msg", "저장할 수 없습니다.\n" + e.map(x => "· " + x).join("\n"), "err");
   accounts = next;
-  msg("acc_msg", "권한을 저장했습니다. (이 화면을 닫으면 사라지므로 '계정 파일 받기'로 내부에 보관하세요.)", "ok");
-  renderAccountOptions();
+  for (const [i, np] of pending) await setPassword(accounts[i], np, true);
+  renderAcc();
+  msg("acc_msg", "권한을 저장했습니다." + (pending.length ? " 새 임시 비밀번호는 다음 로그인 때 변경해야 합니다." : "") +
+    " 계정 파일은 '계정 파일 받기'로 내부에 보관하세요.", "ok");
 }
 function exportAcc() {
-  const blob = new Blob([JSON.stringify(readAcc(), null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob), a = document.createElement("a");
-  a.href = url; a.download = "admin_accounts_INTERNAL.json"; document.body.appendChild(a); a.click();
-  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
-  msg("acc_msg", "계정 파일을 받았습니다. 저장소에 올리지 마세요.", "warn");
+  const data = JSON.stringify(readAcc().map(a => ({ id: a.id, loginId: a.loginId, label: a.label, role: a.role, center: a.center, active: a.active,
+    pw: a.pw, mustChange: !!a.mustChange, failCount: a.failCount || 0, locked: !!a.locked })), null, 2);
+  download(new TextEncoder().encode(data), "admin_accounts_INTERNAL.json", "application/json");
+  msg("acc_msg", "계정 파일을 받았습니다. 비밀번호 해시가 들어 있으니 저장소에 올리지 마세요.", "warn");
 }
 function importAcc(file) {
   if (!file) return;
   file.text().then(t => {
     const arr = JSON.parse(t);
-    if (!Array.isArray(arr) || !arr.every(a => a.id && a.label && ["super", "center"].includes(a.role))) throw new Error("형식이 맞지 않습니다.");
+    if (!Array.isArray(arr) || !arr.every(a => a.id && a.loginId && a.label && ["super", "center"].includes(a.role))) throw new Error("형식이 맞지 않습니다.");
     accounts = arr.map(a => ({ ...a, active: a.active !== false }));
-    renderAcc(); renderAccountOptions();
+    renderAcc();
     msg("acc_msg", "계정 파일을 불러왔습니다. 확인 후 '권한 저장'을 누르세요.", "ok");
   }).catch(e => msg("acc_msg", "불러오기 실패: " + e.message, "err"));
 }
 
-/* ───── 내보내기·이력 ───── */
+/* ───── 내보내기·이력 (최고관리자 전용) ───── */
 function renderOut() {
   const all = rows("SELECT publish_yn FROM faq");
   $("#out_stat").textContent = `현재 작업 DB: ${dbLabel} · FAQ ${all.length}개 (게시 ${all.filter(f => f.publish_yn === "Y").length}개 / 비공개 ${all.filter(f => f.publish_yn !== "Y").length}개)`;
-  $$(".superonly").forEach(el => el.classList.toggle("hide", !isSuper()));
   const logs = rows("SELECT * FROM admin_log ORDER BY id DESC LIMIT 200");
   $("#ltb").innerHTML = logs.map(l => `<tr><td>${esc(l.at)}</td><td>${esc(l.who)}</td><td>${esc(l.action)}</td><td>${esc(l.tbl)}</td><td>${esc(l.key)}</td><td>${esc(l.descr)}</td></tr>`).join("")
     || `<tr><td colspan="6" class="muted">변경 이력이 없습니다.</td></tr>`;
 }
 function downloadWork() {
+  if (!isSuper()) return;
   download(db.export(), "chatbot_work.db");
   msg("out_msg", "작업용 DB를 받았습니다. 이 파일은 내부에만 보관하고 저장소에 올리지 마세요.", "warn");
 }
