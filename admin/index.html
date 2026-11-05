@@ -64,6 +64,17 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 .msg.ok{background:var(--okbg);color:var(--ok)}
 .hide{display:none!important}
 .login{max-width:480px;margin:50px auto}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(180deg,#1E3A8A 0%,#1E3A8A 38%,#EAF0F8 38%)}
+.login-card{width:100%;max-width:400px;padding:0;overflow:hidden;margin:0;box-shadow:0 10px 30px rgba(17,24,39,.15)}
+.login-head{background:#fff;text-align:center;padding:22px 20px 14px}
+.login-head img{width:170px;height:auto;display:block;margin:0 auto 6px}
+.login-head h2{font-size:18px;margin:0}
+.login-head p{margin:4px 0 0;color:var(--mut);font-size:13px}
+.login-body{padding:6px 22px 22px}
+.login-body label{margin-top:12px}
+.wide{width:100%;margin-top:14px;padding:11px;font-size:15px;font-weight:700}
+.center-note{text-align:center;margin-top:12px}
+.small{font-size:12px;margin-top:12px}
 .muted{color:var(--mut);font-size:12px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .steps li{margin-bottom:6px}
@@ -74,21 +85,24 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 <body>
 
 <!-- 1. 로그인 -->
-<div id="login" class="card login">
-  <h2>AI 쳇봇 관리자 화면</h2>
-  <div class="msg warn">시험용 화면입니다. 이 화면의 잠금·비밀번호 확인은 브라우저 안에서만 동작하므로 <b>실제 접근 통제가 아닙니다.</b>
-운영 전에 서버 로그인 또는 GitHub 저장소 권한으로 반드시 바꿔야 합니다.</div>
-  <label>아이디</label>
-  <input id="lid" class="w" autocomplete="username" placeholder="예: super_admin">
-  <label>비밀번호</label>
-  <input id="lpw" type="password" class="w" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
-  <div id="lmsg"></div>
-  <div class="row" style="margin-top:12px"><button class="btn p" onclick="login()">들어가기</button></div>
-  <div class="muted">최초 비밀번호는 <b>sb111111</b>입니다. 처음 로그인하면 새 비밀번호를 정해야 들어갈 수 있습니다.</div>
-  <div id="dbmsg"></div>
-  <label>작업 DB 불러오기 (내부에 보관한 chatbot_work.db)</label>
-  <input type="file" accept=".db" onchange="loadFile(this.files[0])">
-  <div class="muted">공개용 data/chatbot.db는 자동으로 읽습니다. 작업 중이던 파일이 있으면 여기서 불러오세요.</div>
+<div id="login" class="login-wrap">
+  <div class="card login-card">
+    <div class="login-head">
+      <img src="../images/mascot-full.jpg" alt="성북구도시관리공단 주차 안내 AI 쳇봇 마스코트">
+      <h2>주차 안내 AI 쳇봇 관리자</h2>
+      <p>성북구도시관리공단 주차사업팀</p>
+    </div>
+    <div class="login-body">
+      <label>아이디</label>
+      <input id="lid" class="w" autocomplete="username" placeholder="아이디 입력">
+      <label>비밀번호</label>
+      <input id="lpw" type="password" class="w" autocomplete="current-password" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')login()">
+      <div id="lmsg"></div>
+      <button class="btn p wide" onclick="login()">로그인</button>
+      <div class="muted center-note">최초 비밀번호를 사용 중이라면 처음 로그인할 때 새 비밀번호를 정해야 합니다.</div>
+      <div class="msg warn small">시험용 화면입니다. 실제 접근 통제가 아니므로 운영 전에 서버 로그인 또는 GitHub 저장소 권한으로 바꿔야 합니다.</div>
+    </div>
+  </div>
 </div>
 
 <!-- 2. 비밀번호 변경 (최초 로그인 · 임의 변경) -->
@@ -131,7 +145,7 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
   <button data-v="disc" onclick="show('disc')">할인·감면</button>
   <button data-v="contact" class="superonly" onclick="show('contact')">센터·문의처</button>
   <button data-v="acc" class="superonly" onclick="show('acc')">관리자 권한</button>
-  <button data-v="out" class="superonly" onclick="show('out')">내보내기·이력</button>
+  <button data-v="out" class="superonly" onclick="show('out')">시스템 관리</button>
 </nav>
 
 <main>
@@ -239,6 +253,12 @@ label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 
   <!-- 내보내기·이력 (최고관리자 전용) -->
   <section id="v-out" class="hide">
+    <div class="card">
+      <h2>작업 DB 불러오기</h2>
+      <div class="muted">현재: <span id="dbnow"></span> · 작업 중이던 chatbot_work.db가 있으면 여기서 불러오세요.</div>
+      <input type="file" accept=".db" onchange="loadFile(this.files[0])" style="margin-top:8px">
+      <div id="dbmsg"></div>
+    </div>
     <div class="card">
       <h2>작업 흐름</h2>
       <ol class="steps">
@@ -391,6 +411,7 @@ async function init() {
     if (!r.ok) throw new Error(r.status);
     loadBytes(new Uint8Array(await r.arrayBuffer()), "공개 DB (data/chatbot.db)");
   } catch (e) {
+    dbLabel = "없음";
     msg("dbmsg", "공개 DB를 자동으로 읽지 못했습니다. 작업 DB 파일을 직접 불러오세요.", "warn");
   }
 }
@@ -827,6 +848,7 @@ function importAcc(file) {
 function renderOut() {
   const all = rows("SELECT publish_yn FROM faq");
   $("#out_stat").textContent = `현재 작업 DB: ${dbLabel} · FAQ ${all.length}개 (게시 ${all.filter(f => f.publish_yn === "Y").length}개 / 비공개 ${all.filter(f => f.publish_yn !== "Y").length}개)`;
+  $("#dbnow").textContent = dbLabel;
   const logs = rows("SELECT * FROM admin_log ORDER BY id DESC LIMIT 200");
   $("#ltb").innerHTML = logs.map(l => `<tr><td>${esc(l.at)}</td><td>${esc(l.who)}</td><td>${esc(l.action)}</td><td>${esc(l.tbl)}</td><td>${esc(l.key)}</td><td>${esc(l.descr)}</td></tr>`).join("")
     || `<tr><td colspan="6" class="muted">변경 이력이 없습니다.</td></tr>`;
